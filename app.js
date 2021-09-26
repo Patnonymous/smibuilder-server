@@ -4,6 +4,13 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var cors = require('cors');
+var dbconfig = require("./config/dbconfig");
+require('dotenv').config();
+
+
+dbconfig.connectToDb();
+
+
 
 // Init the routers here.
 var indexRouter = require('./routes/index');
