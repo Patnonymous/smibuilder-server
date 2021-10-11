@@ -1,10 +1,14 @@
 // Imports
 var Connection = require("tedious").Connection;
+var Request = require("tedious").Request;
+const TYPES = require("tedious").TYPES;
 
 // Vars
 var dbConnectionVar;
+var usernameAppendNumber;
 
 function connectToDb() {
+    const SELF = this;
     // Tedious
     var config = {
         server: process.env.DB_HOST,
@@ -26,6 +30,7 @@ function connectToDb() {
             console.log(err);
         } else {
             console.log("Database connection.")
+            SELF.getAndSetUsernameAppend();
         };
     });
     dbConnectionVar.on("databaseChange", function (databaseName) {
@@ -40,9 +45,29 @@ function connectToDb() {
     dbConnectionVar.connect();
 };
 
+
+function getAndSetUsernameAppend() {
+    const TAG = "dbconfig.js - getAndSetUsernameAppend(), "
+    const SELF = this;
+    let sqlUserCountStatement = "SELECT COUNT(id) FROM SmiBuilder.Users";
+    let request = new Request(sqlUserCountStatement, function (err, rowCount, rows) {
+        console.log(TAG + "count:", rows[0][0].value);
+        appendNumber = 100 + rows[0][0].value;
+        SELF.usernameAppendNumber = String(appendNumber);
+        console.log(TAG + "usernameAppendNumber: ", SELF.usernameAppendNumber);
+    });
+    dbConnectionVar.execSql(request);
+};
+
 function getDb() {
-    return dbConnectionVar
+    return dbConnectionVar;
+};
+
+
+function incrementUsernameAppend() {
+    appendNumber = parseInt(this.usernameAppendNumber) + 1;
+    this.usernameAppendNumber = String(appendNumber)
 }
 
-module.exports = { connectToDb, getDb };
+module.exports = { connectToDb, getAndSetUsernameAppend, getDb, usernameAppendNumber, incrementUsernameAppend };
 
