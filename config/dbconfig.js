@@ -41,6 +41,10 @@ function connectToDb() {
             console.log("Database change had no name.")
         };
     });
+    dbConnectionVar.on("error", function (err) {
+        console.log("Tedious error: ");
+        console.log(err);
+    });
     // Initialize the connection.
     dbConnectionVar.connect();
 };
