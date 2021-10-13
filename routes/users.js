@@ -11,6 +11,7 @@ const bcrypt = require("bcrypt");
 const saltRounds = 10;
 // Imports - Other
 const { DateTime } = require("luxon");
+var jwt = require('jsonwebtoken');
 
 
 /**
@@ -137,7 +138,12 @@ router.post("/login", async function (req, res, next) {
               updatedOn: retrievedUser[5].value,
 
             };
-            response = { status: "Success", resData: userObject };
+            // Sign token.
+            let token = jwt.sign({ data: userObject }, process.env.WEBTOKEN_SECRET, { expiresIn: "12h" });
+            console.log(TAG + "token: ");
+            console.log(token)
+
+            response = { status: "Success", resData: { userObject: userObject, token: token } };
             res.json(response);
           } else {
             errorMessage = "The username or password is incorrect.";
@@ -163,11 +169,39 @@ router.post("/login", async function (req, res, next) {
 router.post("/verify", async function (req, res, next) {
   const TAG = "users.js - post(/verify), ";
   const { body } = req;
+  const { token } = body;
   let response = {};
 
   console.log(TAG + "Verifying jwt.");
   console.log(TAG + "body: ");
   console.log(body);
+  let decoded;
+
+  try {
+    // Success.
+    decoded = jwt.verify(token, process.env.WEBTOKEN_SECRET);
+    console.log(TAG + "decoded token: ");
+    console.log(decoded);
+
+    response = { status: "Success", resData: decoded.data };
+
+
+  } catch (error) { // Failures.
+    console.log(TAG + "Error decoding token");
+    if (error.name === "TokenExpiredError") {
+      console.log("Expired token error.");
+      console.log(error);
+      response = { status: "Failure", resData: "Login session has expired. Please sign in again." };
+    } else {
+      console.log("Other error.");
+      console.log(error);
+      response = { status: "Failure", resData: "An error has occurred with your session. Please sign in again." };
+    };
+  };
+
+  console.log(TAG + "response: ");
+  console.dir(response);
+  res.json(response);
 });
 
 
