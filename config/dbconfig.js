@@ -29,13 +29,13 @@ function connectToDb() {
         if (err) {
             console.log(err);
         } else {
-            console.log("Database connection.")
+            console.log("\nDatabase connection.")
             SELF.getAndSetUsernameAppend();
         };
     });
     dbConnectionVar.on("databaseChange", function (databaseName) {
         if (databaseName) {
-            console.log("Database changed. Name: ");
+            console.log("\nDatabase changed. Name: ");
             console.log(databaseName)
         } else {
             console.log("Database change had no name.")
@@ -51,14 +51,14 @@ function connectToDb() {
 
 
 function getAndSetUsernameAppend() {
-    const TAG = "dbconfig.js - getAndSetUsernameAppend(), "
+    const TAG = "\ndbconfig.js - getAndSetUsernameAppend(), "
     const SELF = this;
     let sqlUserCountStatement = "SELECT COUNT(id) FROM SmiBuilder.Users";
     let request = new Request(sqlUserCountStatement, function (err, rowCount, rows) {
         console.log(TAG + "count:", rows[0][0].value);
         appendNumber = 100 + rows[0][0].value;
         SELF.usernameAppendNumber = String(appendNumber);
-        console.log(TAG + "usernameAppendNumber: ", SELF.usernameAppendNumber);
+        console.log("usernameAppendNumber: ", SELF.usernameAppendNumber);
     });
     dbConnectionVar.execSql(request);
 };
