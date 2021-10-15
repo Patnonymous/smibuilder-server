@@ -5,16 +5,22 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var cors = require('cors');
 var dbconfig = require("./config/dbconfig");
+var loadGods = require("./functions/loadGods");
 require('dotenv').config();
 
 
+// Connect to DB
 dbconfig.connectToDb();
+
+// Load gods and items
+loadGods.loadGodsFromJson();
 
 
 
 // Init the routers here.
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var godsRouter = require('./routes/gods');
 var pwTestingRouter = require('./routes/pw-testing');
 
 var app = express();
@@ -35,6 +41,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/pw-testing', pwTestingRouter);
+app.use('/gods', godsRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
