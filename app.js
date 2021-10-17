@@ -9,9 +9,6 @@ var loadGods = require("./functions/loadGods");
 require('dotenv').config();
 
 
-// Connect to DB
-dbconfig.connectToDb();
-
 // Load gods and items
 loadGods.loadGodsFromJson();
 
