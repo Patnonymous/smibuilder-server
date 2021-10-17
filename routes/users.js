@@ -3,7 +3,6 @@ var express = require('express');
 var router = express.Router();
 // Imports - Database
 var dbconfig = require("../config/dbconfig");
-var dbConnection = dbconfig.getDb();
 var Request = require("tedious").Request;
 const TYPES = require("tedious").TYPES;
 // Imports - bcrypt
@@ -23,17 +22,27 @@ var jwt = require('jsonwebtoken');
  * ERROR: res.json{status: Failure, resData: errorMessage}
  */
 router.post("/register", async function (req, res, next) {
-  const TAG = "users.js - post(/register), ";
+  const TAG = "\nusers.js - post(/register), ";
   const { body } = req;
-  let response = {};
   const hashed = bcrypt.hashSync(body.password, saltRounds);
-  // Append the identifier to the username.
-  const usernameWithAppend = body.username + "#" + String(dbconfig.usernameAppendNumber);
+  let response = {};
+  let userNameWithAppend;
+
 
   console.log(TAG + "body: ");
   console.log(body);
 
   try {
+    console.log("Awaiting connection status...");
+    let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+    console.log("Awaited connection.");
+    let dbConnection = dbConnectionStatus.resData;
+
+    // Get the identifier number that will be added to the end of the username
+    let dbGetUsernameAppendStatus = await dbconfig.asyncGetAndSetUsernameAppend(dbConnection);
+    userNameWithAppend = body.username + "#" + String(dbGetUsernameAppendStatus.resData);
+
+
     // Create the prepared statement. Tedious uses @name for variables.
     let sqlInsertUserStatement = "INSERT INTO SmiBuilder.Users VALUES(@email, @username, @password, @user_type, @created_on, @updated_on)";
     // Create the new request object.
@@ -44,7 +53,7 @@ router.post("/register", async function (req, res, next) {
         console.log("Database request error.");
         console.log(err.message);
 
-        // Godly error handling.
+        // Bad error handling.
         if (err.message.includes("Violation of UNIQUE KEY constraint 'SmiBuilderUsers_email_unique'")) {
           errorMessage = "This email is already is registered."
         } else {
@@ -52,6 +61,8 @@ router.post("/register", async function (req, res, next) {
         }
 
         response = { status: "Failure", resData: errorMessage };
+        dbConnection.close();
+        console.log("dbConnection has been closed.");
         res.json(response);
       } else {
         // There was no err, statement was a success. Process the data, then send the response.
@@ -59,15 +70,15 @@ router.post("/register", async function (req, res, next) {
         console.log(rowCount);
         console.log(rows);
         response = { status: "Success" };
-        // User has been created, increment append number.
-        dbconfig.incrementUsernameAppend();
+        dbConnection.close();
+        console.log("dbConnection has been closed.");
         res.json(response);
-      }
+      };
     });
 
     // This is how to add variables to prepared statements using Tedious.
     request.addParameter("email", TYPES.VarChar, body.email);
-    request.addParameter("username", TYPES.VarChar, usernameWithAppend);
+    request.addParameter("username", TYPES.VarChar, userNameWithAppend);
     request.addParameter("password", TYPES.VarChar, hashed);
     request.addParameter("user_type", TYPES.VarChar, "Member");
     request.addParameter("created_on", TYPES.DateTime, DateTime.now())
@@ -80,6 +91,8 @@ router.post("/register", async function (req, res, next) {
     console.log(TAG + "error: ");
     console.log(error)
     response = { status: "Failure", resData: error.message };
+    dbConnection.close();
+    console.log("dbConnection has been closed.");
     res.json(response);
   };
 });
@@ -89,7 +102,7 @@ router.post("/register", async function (req, res, next) {
  * @description POST log in a user. Find the account with the email they gave, then attempt login.
  */
 router.post("/login", async function (req, res, next) {
-  const TAG = "users.js - post(/login), ";
+  const TAG = "\nusers.js - post(/login), ";
   const { body } = req;
   let response = {};
   let errorMessage = "";
@@ -99,6 +112,10 @@ router.post("/login", async function (req, res, next) {
 
 
   try {
+    console.log("Awaiting connection status...");
+    let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+    console.log("Awaited connection.");
+    let dbConnection = dbConnectionStatus.resData;
     let sqlSelectUserStatement = "SELECT email, username, password, user_type, created_on, updated_on FROM SmiBuilder.Users WHERE email = @email";
     let request = new Request(sqlSelectUserStatement, function (err, rowCount, rows) {
       if (err) {
@@ -107,6 +124,8 @@ router.post("/login", async function (req, res, next) {
         console.log(err.message);
 
         response = { status: "Failure", resData: errorMessage };
+        dbConnection.close();
+        console.log("dbConnection has been closed.");
         res.json(response);
 
       } else {
@@ -118,11 +137,15 @@ router.post("/login", async function (req, res, next) {
         if (rowCount === 0) {
           errorMessage = "The username or password is incorrect.";
           response = { status: "Failure", resData: errorMessage };
+          dbConnection.close();
+          console.log("dbConnection has been closed.");
           res.json(response);
         } else if (rowCount > 1) {
           // If rowCount is greater than 1, something is wrong.
           errorMessage = "Found more than 1 account associated with this email. Contact an administrator and complain because this shouldn't happen."
           response = { status: "Failure", resData: errorMessage };
+          dbConnection.close();
+          console.log("dbConnection has been closed.");
           res.json(response);
         } else {
           // Else, we have a valid user to check.
@@ -144,15 +167,18 @@ router.post("/login", async function (req, res, next) {
             console.log(token)
 
             response = { status: "Success", resData: { userObject: userObject, token: token } };
+            dbConnection.close();
+            console.log("dbConnection has been closed.");
             res.json(response);
           } else {
             errorMessage = "The username or password is incorrect.";
             response = { status: "Failure", resData: errorMessage };
+            dbConnection.close();
+            console.log("dbConnection has been closed.");
             res.json(response);
-          }
-        }
-
-      }
+          };
+        };
+      };
     });
 
     request.addParameter("email", TYPES.VarChar, body.email);
@@ -161,8 +187,10 @@ router.post("/login", async function (req, res, next) {
     console.log(TAG + "Error caught by the try catch.")
     console.log(error);
     response = { status: "Failure", resData: error.message };
+    dbConnection.close();
+    console.log("dbConnection has been closed.");
     res.json(response);
-  }
+  };
 });
 
 
