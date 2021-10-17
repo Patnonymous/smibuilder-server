@@ -1,0 +1,8 @@
+The gods and items JSON files originate from the Hirez API.
+
+God notes:
+- For some reason Persephone's Type doesn't have "Melee" or "Ranged".
+    - She is Ranged.
+
+
+Item notes:
