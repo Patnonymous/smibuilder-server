@@ -1,6 +1,7 @@
 The gods and items JSON files originate from the Hirez API.
 
 God notes:
+- I am 99% sure stats are rounded. ex. 44.5 power is rounded up to 45
 - For some reason Persephone's Type doesn't have "Melee" or "Ranged".
     - She is Ranged.
 
