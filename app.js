@@ -6,18 +6,20 @@ var logger = require('morgan');
 var cors = require('cors');
 var dbconfig = require("./config/dbconfig");
 var loadGods = require("./functions/loadGods");
+var loadItems = require("./functions/loadItems");
 require('dotenv').config();
 
 
 // Load gods and items
 loadGods.loadGodsFromJson();
-
+loadItems.loadItemsFromJson();
 
 
 // Init the routers here.
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var godsRouter = require('./routes/gods');
+var itemsRouter = require("./routes/items");
 var pwTestingRouter = require('./routes/pw-testing');
 
 var app = express();
@@ -39,6 +41,7 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/pw-testing', pwTestingRouter);
 app.use('/gods', godsRouter);
+app.use("/items", itemsRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
