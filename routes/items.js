@@ -7,9 +7,10 @@ var loadItems = require("../functions/loadItems");
 /**
  * @description GET all items.
  */
-router.get("/", async function (req, res, next) {
+router.post("/", async function (req, res, next) {
     const TAG = "\nitems.js - get(/), ";
     const itemsArray = loadItems.getArrayOfItems();
+    const { body } = req
     let response = {};
 
     console.log(TAG + "Sending array of all the items.");
@@ -19,6 +20,10 @@ router.get("/", async function (req, res, next) {
     try {
         let filteredItemsArray = itemsArray.filter(item => {
             return item.ActiveFlag == "y"
+        });
+        // Filter out any equipped items.
+        filteredItemsArray = filteredItemsArray.filter(item => {
+            return !body.equipped.includes(item.ItemId)
         });
         response = { status: "Success", resData: filteredItemsArray };
     } catch (error) {
@@ -34,16 +39,23 @@ router.get("/", async function (req, res, next) {
 /**
  * @description GET consumable items.
  */
-router.get("/consumables", async function (req, res, next) {
+router.post("/consumables", async function (req, res, next) {
     const TAG = "\nitems.js - get(/consumables), ";
     const itemsArray = loadItems.getArrayOfItems();
+    const { body } = req
     let response = {};
 
     console.log(TAG + "Sending array of only consumables");
+    console.log("body: ");
+    console.log(body);
 
     try {
         let filteredItemsArray = itemsArray.filter(item => {
             return item.Type === "Consumable" && item.ActiveFlag == "y"
+        });
+        // Filter out any equipped items.
+        filteredItemsArray = filteredItemsArray.filter(item => {
+            return !body.equipped.includes(item.ItemId)
         });
         response = { status: "Success", resData: filteredItemsArray };
     } catch (error) {
@@ -58,9 +70,10 @@ router.get("/consumables", async function (req, res, next) {
 /**
  * @description GET relic items. Relics are called "Active" items in the API JSON.
  */
-router.get("/relics", async function (req, res, next) {
+router.post("/relics", async function (req, res, next) {
     const TAG = "\nitems.js - get(/relics), ";
     const itemsArray = loadItems.getArrayOfItems();
+    const { body } = req
     let response = {};
 
     console.log(TAG + "Sending array of only relics");
@@ -68,6 +81,10 @@ router.get("/relics", async function (req, res, next) {
     try {
         let filteredItemsArray = itemsArray.filter(item => {
             return item.Type === "Active" && item.ActiveFlag == "y"
+        });
+        // Filter out any equipped items.
+        filteredItemsArray = filteredItemsArray.filter(item => {
+            return !body.equipped.includes(item.ItemId)
         });
         response = { status: "Success", resData: filteredItemsArray };
     } catch (error) {
@@ -79,11 +96,18 @@ router.get("/relics", async function (req, res, next) {
     res.json(response);
 });
 
-router.get("/:godRole/:godDamageType/:godBasicAttackType/:itemsOnly/:isRatatoskr", async function (req, res, next) {
+/**
+ * @description Get the valid items for the character.
+ * Uses many filters to filter out the items that the character cannot use.
+ * The final arra should be the valid items.
+ * Returns response.
+ */
+router.post("/:godRole/:godDamageType/:godBasicAttackType/:itemsOnly/:isRatatoskr", async function (req, res, next) {
     const TAG = "\nitems.js - get(/godRole/godDamageType/godBasicAttackType/itemsOnly), ";
     const itemsArray = loadItems.getArrayOfItems();
     const { params } = req;
     const { godRole, godDamageType, godBasicAttackType, itemsOnly, isRatatoskr } = params
+    const { body } = req
     let response = {};
 
     // These can catch most items
@@ -165,6 +189,11 @@ router.get("/:godRole/:godDamageType/:godBasicAttackType/:itemsOnly/:isRatatoskr
             };
         });
 
+        // Filter out any equipped items.
+        filteredItemsArray = filteredItemsArray.filter(item => {
+            return !body.equipped.includes(item.ItemId)
+        });
+
         // FINAL filter catches character specific edge cases.
         // IIRC there's only one in the game right now: Rats acorn. Nobody but Rat can use the acorn.
         filteredItemsArray = filteredItemsArray.filter(item => {
@@ -185,6 +214,49 @@ router.get("/:godRole/:godDamageType/:godBasicAttackType/:itemsOnly/:isRatatoskr
     };
     res.json(response);
 });
+
+
+/**
+ * @description Gets all the items that are related to the rootId param.
+ * Puts each item in the appropriate array (tier 1, 2, and 3).
+ * Returns the response.
+ */
+router.get("/tree/:rootId", async function (req, res, next) {
+    const itemsArray = loadItems.getArrayOfItems();
+    const { params } = req;
+    const { rootId } = params;
+    let response = {};
+    let resData = {
+        tier1Items: [], tier2Items: [], tier3Items: [],
+    };
+
+    try {
+        // Step 1 filter all items to only ones with root id
+        let filteredItems = itemsArray.filter(item => {
+            return parseInt(item.RootItemId) === parseInt(rootId) && item.ActiveFlag === "y";
+        });
+
+        filteredItems.forEach(item => {
+            if (item.ItemTier === 1) {
+                resData.tier1Items.push(item);
+            } else if (item.ItemTier === 2) {
+                resData.tier2Items.push(item);
+            } else if (item.ItemTier === 3) {
+                resData.tier3Items.push(item);
+            };
+        });
+
+        response = { status: "Success", resData: resData }
+
+    } catch (error) {
+        console.log("ERROR: ");
+        console.log(error.message);
+        console.log(error);
+        response = { status: "Failure", resData: error.message };
+    };
+    res.json(response);
+
+})
 
 
 
