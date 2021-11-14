@@ -17,7 +17,7 @@ var jwt = require('jsonwebtoken');
  * @description CREATE a user. A post request to /register attempts to create a user.
  * All API responses for this application will try to follow a standard format. All response objects will contain
  * a 'status'' indicating Success or Failure, and sometimes a 'resData' containing data.
- * @returns SUCCESS: res.json{status: Success}
+ * @returns {JSON} SUCCESS: res.json{status: Success}
  * 
  * ERROR: res.json{status: Failure, resData: errorMessage}
  */
@@ -116,7 +116,7 @@ router.post("/login", async function (req, res, next) {
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
     console.log("Awaited connection.");
     let dbConnection = dbConnectionStatus.resData;
-    let sqlSelectUserStatement = "SELECT email, username, password, user_type, created_on, updated_on FROM SmiBuilder.Users WHERE email = @email";
+    let sqlSelectUserStatement = "SELECT id, email, username, password, user_type, created_on, updated_on FROM SmiBuilder.Users WHERE email = @email";
     let request = new Request(sqlSelectUserStatement, function (err, rowCount, rows) {
       if (err) {
         errorMessage = "";
@@ -150,15 +150,16 @@ router.post("/login", async function (req, res, next) {
         } else {
           // Else, we have a valid user to check.
           const retrievedUser = rows[0];
-          const passHash = retrievedUser[2].value;
+          const passHash = retrievedUser[3].value;
           let isPasswordCorrect = bcrypt.compareSync(body.password, passHash);
           if (isPasswordCorrect === true) {
             const userObject = {
-              userEmail: retrievedUser[0].value,
-              userName: retrievedUser[1].value,
-              userType: retrievedUser[3].value,
-              createdOn: retrievedUser[4].value,
-              updatedOn: retrievedUser[5].value,
+              userId: retrievedUser[0].value,
+              userEmail: retrievedUser[1].value,
+              userName: retrievedUser[2].value,
+              userType: retrievedUser[4].value,
+              createdOn: retrievedUser[5].value,
+              updatedOn: retrievedUser[6].value,
 
             };
             // Sign token.
