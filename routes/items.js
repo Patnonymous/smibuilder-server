@@ -35,6 +35,30 @@ router.post("/", async function (req, res, next) {
     res.json(response);
 });
 
+/**
+ * @description Get one item according to provied ID.
+ */
+router.get("/:itemId", async function (req, res, next) {
+    const itemsArray = loadItems.getArrayOfItems();
+    let response = {};
+    try {
+        let itemToGet = itemsArray.find(item => {
+            return item.ItemId === req.params.itemId;
+        });
+        if (itemToGet) {
+            response = { status: "Success", resData: itemToGet };
+        } else {
+            throw new Error(`Could not find an item with the ID: ${req.params.itemId}`);
+        }
+    } catch (error) {
+        console.log("ERROR: ");
+        console.log(error.message);
+        console.log(error);
+        response = { status: "Failure", resData: error.message };
+    }
+    res.json(response);
+});
+
 
 /**
  * @description GET consumable items.
