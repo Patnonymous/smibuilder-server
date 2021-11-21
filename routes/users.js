@@ -188,11 +188,69 @@ router.post("/login", async function (req, res, next) {
     console.log(TAG + "Error caught by the try catch.")
     console.log(error);
     response = { status: "Failure", resData: error.message };
-    dbConnection.close();
-    console.log("dbConnection has been closed.");
+
+    if (dbConnection) {
+      dbConnection.close();
+      console.log("dbConnection has been closed.");
+    };
+
     res.json(response);
   };
 });
+
+/**
+ * @description GET a username according to user ID.
+ */
+router.get("/username/:userId", async function (req, res, next) {
+  const TAG = "\nusers.js - GET (/username/:userId), ";
+  let response = {};
+
+  console.log(TAG + "Getting a username.");
+
+  try {
+    let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+    let dbConnection = dbConnectionStatus.resData;
+    let sqlSelectOneUsernameStatement = "SELECT username FROM SmiBuilder.Users WHERE id = @id";
+
+    let request = new Request(sqlSelectOneUsernameStatement, function (err, rowCount, rows) {
+      if (err) {
+        console.log("Database request error: ");
+        console.log(err);
+        dbConnection.close();
+        response = { status: "Failure", resData: err.message };
+        res.json(response);
+      } else {
+        console.log("Request success. Outputting rowCount and rows: ");
+        console.log(rowCount);
+        console.log(rows);
+
+        if (rowCount === 0) {
+          response = { status: "Failure", resData: `A user with the ID: '${req.params.userId}' does not exist.` };
+        } else if (rowCount > 1) {
+          response = { status: "Failure", resData: "More than 1 user was found. Something has gone very wrong." };
+        } else {
+          response = { status: "Success", resData: rows[0][0].value };
+        }
+
+        // Send res.
+        res.json(response);
+      };
+    });
+
+    // Prepare.
+    request.addParameter("id", TYPES.Int, req.params.userId);
+    // Execute.
+    dbConnection.execSql(request);
+  } catch (error) {
+    console.log("Error caught by the try catch.");
+    console.log(error);
+    if (dbConnection) {
+      dbConnection.close();
+    };
+    response = { status: "Failure", resData: error.message };
+    res.json(response);
+  }
+})
 
 
 router.post("/verify", async function (req, res, next) {
