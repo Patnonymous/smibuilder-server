@@ -39,11 +39,16 @@ router.post("/", async function (req, res, next) {
  * @description Get one item according to provied ID.
  */
 router.get("/:itemId", async function (req, res, next) {
+    const TAG = "\nitems.js - GET (:itemID), ";
     const itemsArray = loadItems.getArrayOfItems();
     let response = {};
+    const idAsInt = parseInt(req.params.itemId);
+
+    console.log(TAG + "Getting 1 item with the id: ");
+    console.log(idAsInt);
     try {
         let itemToGet = itemsArray.find(item => {
-            return item.ItemId === req.params.itemId;
+            return parseInt(item.ItemId) === idAsInt;
         });
         if (itemToGet) {
             response = { status: "Success", resData: itemToGet };
