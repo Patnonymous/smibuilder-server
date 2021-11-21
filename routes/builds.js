@@ -9,6 +9,72 @@ const TYPES = require("tedious").TYPES;
 const { DateTime } = require("luxon");
 
 
+
+
+/**
+ * GET all the builds.
+ */
+router.get("/", async function (req, res, next) {
+    const TAG = "\nbuilds.js - GET(/), ";
+    let response = {};
+
+    console.log(TAG + "Getting all the builds.");
+
+    // Do database work in try catch.
+    try {
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        let dbConnection = dbConnectionStatus.resData;
+        let sqlSelectAllStatement = "SELECT * FROM SmiBuilder.Builds";
+
+        let request = new Request(sqlSelectAllStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error.");
+                console.log(err.message);
+                response = { status: "Failure", resData: err.message };
+                dbConnection.close();
+                res.json(response);
+            } else {
+                console.log("Get all builds success. Parsing now.");
+                let allParsedBuilds = [];
+
+                // Parse and format.
+                rows.forEach(build => {
+                    let parsedBuild = {};
+                    parsedBuild.id = build[0].value;
+                    parsedBuild.ownerId = build[1].value;
+                    parsedBuild.title = build[2].value;
+                    parsedBuild.description = build[3].value;
+                    parsedBuild.godId = build[4].value;
+                    parsedBuild.items = JSON.parse(build[5].value);
+                    parsedBuild.likes = build[6].value;
+                    parsedBuild.dislikes = build[7].value;
+                    parsedBuild.createdDate = Date.parse(build[8].value);
+
+                    allParsedBuilds.push(parsedBuild);
+                });
+
+                response = { status: "Success", resData: allParsedBuilds };
+                dbConnection.close();
+                res.json(response);
+            }
+        });
+
+        // Execute.
+        dbConnection.execSql(request);
+    } catch (error) {
+        console.log("Error caught by try catch.");
+        console.log(error);
+        response = { status: "Failure", resData: error.message }
+
+        // Close db connection if open.
+        if (dbConnection !== null) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
+
+
 /**
  * CREATE a build.
  */
@@ -62,7 +128,11 @@ router.post("/create", async function (req, res, next) {
         console.log("Error caught by the try catch.")
         console.log(error);
         response = { status: "Failure", resData: error.message };
-        dbConnection.close();
+
+        // Close if open.
+        if (dbConnection !== null) {
+            dbConnection.close();
+        }
         res.json(response);
     }
 });
