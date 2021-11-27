@@ -47,6 +47,7 @@ function asyncConnectToDb() {
         dbConnectionVar.on("error", function (err) {
             console.log("Tedious error: ");
             console.log(err);
+            dbConnectionVar.close();
             reject({ conStatus: "Failure", resData: err.message });
         });
         // Initialize the connection.
