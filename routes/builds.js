@@ -30,6 +30,16 @@ router.use("/like/:buildId", function (req, res, next) {
         next();
     }
 });
+router.use("/dislike/:buildId", function (req, res, next) {
+    const { body } = req;
+    const { token } = body;
+    let verificationResponse = verifyUser.verifyToken(token);
+    if (verificationResponse === false) {
+        res.json({ status: "Failure", resData: "Unauthorized." })
+    } else if (verificationResponse === true) {
+        next();
+    }
+});
 
 
 
