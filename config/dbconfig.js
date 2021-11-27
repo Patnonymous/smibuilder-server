@@ -67,16 +67,13 @@ function asyncConnectToDb() {
  * @returns Promise resolve or reject.
  */
 function asyncGetAndSetUsernameAppend(dbConnectionVar) {
-    const TAG = "\ndbconfig.js - getAndSetUsernameAppend(), "
     const SELF = this;
     return new Promise((resolve, reject) => {
         let sqlUserCountStatement = "SELECT COUNT(id) FROM SmiBuilder.Users";
         let request = new Request(sqlUserCountStatement, function (err, rowCount, rows) {
             try {
-                console.log(TAG + "count:", rows[0][0].value);
                 appendNumber = 100 + rows[0][0].value;
                 SELF.usernameAppendNumber = String(appendNumber);
-                console.log("usernameAppendNumber: ", SELF.usernameAppendNumber);
                 resolve({ resStatus: "Success", resData: SELF.usernameAppendNumber });
             } catch (error) {
                 console.log("ERROR: ");

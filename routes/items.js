@@ -8,14 +8,9 @@ var loadItems = require("../functions/loadItems");
  * @description GET all items.
  */
 router.post("/", async function (req, res, next) {
-    const TAG = "\nitems.js - get(/), ";
     const itemsArray = loadItems.getArrayOfItems();
     const { body } = req
     let response = {};
-
-    console.log(TAG + "Sending array of all the items.");
-
-
 
     try {
         let filteredItemsArray = itemsArray.filter(item => {
@@ -29,7 +24,6 @@ router.post("/", async function (req, res, next) {
     } catch (error) {
         console.log("ERROR: ");
         console.log(error.message);
-        console.log(error);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);
@@ -39,13 +33,10 @@ router.post("/", async function (req, res, next) {
  * @description Get one item according to provied ID.
  */
 router.get("/:itemId", async function (req, res, next) {
-    const TAG = "\nitems.js - GET (:itemID), ";
     const itemsArray = loadItems.getArrayOfItems();
     let response = {};
     const idAsInt = parseInt(req.params.itemId);
 
-    console.log(TAG + "Getting 1 item with the id: ");
-    console.log(idAsInt);
     try {
         let itemToGet = itemsArray.find(item => {
             return parseInt(item.ItemId) === idAsInt;
@@ -58,7 +49,6 @@ router.get("/:itemId", async function (req, res, next) {
     } catch (error) {
         console.log("ERROR: ");
         console.log(error.message);
-        console.log(error);
         response = { status: "Failure", resData: error.message };
     }
     res.json(response);
@@ -69,14 +59,9 @@ router.get("/:itemId", async function (req, res, next) {
  * @description GET consumable items.
  */
 router.post("/consumables", async function (req, res, next) {
-    const TAG = "\nitems.js - get(/consumables), ";
     const itemsArray = loadItems.getArrayOfItems();
     const { body } = req
     let response = {};
-
-    console.log(TAG + "Sending array of only consumables");
-    console.log("body: ");
-    console.log(body);
 
     try {
         let filteredItemsArray = itemsArray.filter(item => {
@@ -90,7 +75,6 @@ router.post("/consumables", async function (req, res, next) {
     } catch (error) {
         console.log("ERROR: ");
         console.log(error.message);
-        console.log(error);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);
@@ -100,12 +84,9 @@ router.post("/consumables", async function (req, res, next) {
  * @description GET relic items. Relics are called "Active" items in the API JSON.
  */
 router.post("/relics", async function (req, res, next) {
-    const TAG = "\nitems.js - get(/relics), ";
     const itemsArray = loadItems.getArrayOfItems();
     const { body } = req
     let response = {};
-
-    console.log(TAG + "Sending array of only relics");
 
     try {
         let filteredItemsArray = itemsArray.filter(item => {
@@ -119,7 +100,6 @@ router.post("/relics", async function (req, res, next) {
     } catch (error) {
         console.log("ERROR: ");
         console.log(error.message);
-        console.log(error);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);
@@ -132,7 +112,6 @@ router.post("/relics", async function (req, res, next) {
  * Returns response.
  */
 router.post("/:godRole/:godDamageType/:godBasicAttackType/:itemsOnly/:isRatatoskr", async function (req, res, next) {
-    const TAG = "\nitems.js - get(/godRole/godDamageType/godBasicAttackType/itemsOnly), ";
     const itemsArray = loadItems.getArrayOfItems();
     const { params } = req;
     const { godRole, godDamageType, godBasicAttackType, itemsOnly, isRatatoskr } = params
@@ -146,10 +125,6 @@ router.post("/:godRole/:godDamageType/:godBasicAttackType/:itemsOnly/:isRatatosk
     // These are more specific arrays for items that don't get caught by the above arrays.
     const physicalOnlyItems = [10662];
     const magicalOnlyItems = [];
-
-    console.log(TAG + "Getting all regular items that this god can use.");
-    console.log(`Role: ${godRole}, Damage Type: ${godDamageType}, Basic Attack Type: ${godBasicAttackType}, Only get items: ${itemsOnly}`);
-    console.log(`Is this God Ratatoskr: ${isRatatoskr}`);
 
     try {
         // First filter out all inactive items
@@ -238,7 +213,6 @@ router.post("/:godRole/:godDamageType/:godBasicAttackType/:itemsOnly/:isRatatosk
     } catch (error) {
         console.log("ERROR: ");
         console.log(error.message);
-        console.log(error);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);
@@ -280,7 +254,6 @@ router.get("/tree/:rootId", async function (req, res, next) {
     } catch (error) {
         console.log("ERROR: ");
         console.log(error.message);
-        console.log(error);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);

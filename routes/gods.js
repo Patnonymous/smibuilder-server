@@ -8,18 +8,14 @@ var loadGods = require('../functions/loadGods');
  * GET all gods.
  */
 router.get('/', async function (req, res, next) {
-    const TAG = "\ngods.js - get(/), ";
     const godsArray = loadGods.getArrayOfGods();
     let response = {};
-
-    console.log(TAG + "sending array of gods.");
 
     try {
         response = { status: "Success", resData: godsArray };
     } catch (error) {
         console.log("ERROR: ");
         console.log(error.message);
-        console.log(error);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);
@@ -29,13 +25,9 @@ router.get('/', async function (req, res, next) {
  * Get 1 god according to the id param.
  */
 router.get("/:id", async function (req, res, next) {
-    const TAG = "\ngods.js - get(/get), ";
     const godsArray = loadGods.getArrayOfGods();
     const idToGet = parseInt(req.params.id)
     let response = {};
-
-    console.log(TAG + "Getting 1 god");
-    console.dir(idToGet);
 
     try {
         let foundGod = godsArray.filter(god => { return parseInt(god.id) === idToGet });
@@ -47,7 +39,6 @@ router.get("/:id", async function (req, res, next) {
     } catch (error) {
         console.log("ERROR: ");
         console.log(error.message);
-        console.log(error);
         response = { status: "Failure", resData: error.message };
     }
 

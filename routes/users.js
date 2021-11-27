@@ -22,7 +22,6 @@ var jwt = require('jsonwebtoken');
  * ERROR: res.json{status: Failure, resData: errorMessage}
  */
 router.post("/register", async function (req, res, next) {
-  const TAG = "\nusers.js - post(/register), ";
   const { body } = req;
   const hashed = bcrypt.hashSync(body.password, saltRounds);
   let response = {};
@@ -30,13 +29,8 @@ router.post("/register", async function (req, res, next) {
   let userNameWithAppend;
 
 
-  console.log(TAG + "body: ");
-  console.log(body);
-
   try {
-    console.log("Awaiting connection status...");
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
-    console.log("Awaited connection.");
     dbConnection = dbConnectionStatus.resData;
 
     // Get the identifier number that will be added to the end of the username
@@ -63,16 +57,11 @@ router.post("/register", async function (req, res, next) {
 
         response = { status: "Failure", resData: errorMessage };
         dbConnection.close();
-        console.log("dbConnection has been closed.");
         res.json(response);
       } else {
         // There was no err, statement was a success. Process the data, then send the response.
-        console.log("Create User Success");
-        console.log(rowCount);
-        console.log(rows);
         response = { status: "Success" };
         dbConnection.close();
-        console.log("dbConnection has been closed.");
         res.json(response);
       };
     });
@@ -89,12 +78,11 @@ router.post("/register", async function (req, res, next) {
 
 
   } catch (error) {
-    console.log(TAG + "error: ");
-    console.log(error)
+    console.log("ERROR: ");
+    console.log(error.message)
     response = { status: "Failure", resData: error.message };
     if (dbConnection) {
       dbConnection.close();
-      console.log("dbConnection has been closed.");
     }
     res.json(response);
   };
@@ -105,20 +93,14 @@ router.post("/register", async function (req, res, next) {
  * @description POST log in a user. Find the account with the email they gave, then attempt login.
  */
 router.post("/login", async function (req, res, next) {
-  const TAG = "\nusers.js - post(/login), ";
   const { body } = req;
   let response = {};
   let dbConnection = null;
   let errorMessage = "";
 
-  console.log(TAG + "body: ");
-  console.log(body);
-
 
   try {
-    console.log("Awaiting connection status...");
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
-    console.log("Awaited connection.");
     dbConnection = dbConnectionStatus.resData;
     let sqlSelectUserStatement = "SELECT id, email, username, password, user_type, created_on, updated_on FROM SmiBuilder.Users WHERE email = @email";
     let request = new Request(sqlSelectUserStatement, function (err, rowCount, rows) {
@@ -129,27 +111,20 @@ router.post("/login", async function (req, res, next) {
 
         response = { status: "Failure", resData: errorMessage };
         dbConnection.close();
-        console.log("dbConnection has been closed.");
         res.json(response);
 
       } else {
-        console.log(TAG + "Request success. Outputting rowCount and rows: ")
-        console.log(rowCount);
-        console.log(rows);
-
         // If rowCount is 0, then the account doesn't exist.
         if (rowCount === 0) {
           errorMessage = "The username or password is incorrect.";
           response = { status: "Failure", resData: errorMessage };
           dbConnection.close();
-          console.log("dbConnection has been closed.");
           res.json(response);
         } else if (rowCount > 1) {
           // If rowCount is greater than 1, something is wrong.
           errorMessage = "Found more than 1 account associated with this email. Contact an administrator and complain because this shouldn't happen."
           response = { status: "Failure", resData: errorMessage };
           dbConnection.close();
-          console.log("dbConnection has been closed.");
           res.json(response);
         } else {
           // Else, we have a valid user to check.
@@ -168,18 +143,14 @@ router.post("/login", async function (req, res, next) {
             };
             // Sign token.
             let token = jwt.sign({ data: userObject }, process.env.WEBTOKEN_SECRET, { expiresIn: "12h" });
-            console.log(TAG + "token: ");
-            console.log(token)
 
             response = { status: "Success", resData: { userObject: userObject, token: token } };
             dbConnection.close();
-            console.log("dbConnection has been closed.");
             res.json(response);
           } else {
             errorMessage = "The username or password is incorrect.";
             response = { status: "Failure", resData: errorMessage };
             dbConnection.close();
-            console.log("dbConnection has been closed.");
             res.json(response);
           };
         };
@@ -189,13 +160,12 @@ router.post("/login", async function (req, res, next) {
     request.addParameter("email", TYPES.VarChar, body.email);
     dbConnection.execSql(request);
   } catch (error) {
-    console.log(TAG + "Error caught by the try catch.")
-    console.log(error);
+    console.log("ERROR: ")
+    console.log(error.message);
     response = { status: "Failure", resData: error.message };
 
     if (dbConnection) {
       dbConnection.close();
-      console.log("dbConnection has been closed.");
     };
 
     res.json(response);
@@ -206,11 +176,9 @@ router.post("/login", async function (req, res, next) {
  * @description GET a username according to user ID.
  */
 router.get("/username/:userId", async function (req, res, next) {
-  const TAG = "\nusers.js - GET (/username/:userId), ";
   let response = {};
   let dbConnection = null;
 
-  console.log(TAG + "Getting a username.");
 
   try {
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
@@ -222,14 +190,9 @@ router.get("/username/:userId", async function (req, res, next) {
         console.log("Database request error: ");
         console.log(err);
         dbConnection.close();
-        console.log("dbConnection closed.")
         response = { status: "Failure", resData: err.message };
         res.json(response);
       } else {
-        console.log("Request success. Outputting rowCount and rows: ");
-        console.log(rowCount);
-        console.log(rows);
-
         if (rowCount === 0) {
           response = { status: "Failure", resData: `A user with the ID: '${req.params.userId}' does not exist.` };
         } else if (rowCount > 1) {
@@ -239,7 +202,6 @@ router.get("/username/:userId", async function (req, res, next) {
         }
 
         dbConnection.close();
-        console.log("dbConnection closed.")
         // Send res.
         res.json(response);
       };
@@ -250,8 +212,8 @@ router.get("/username/:userId", async function (req, res, next) {
     // Execute.
     dbConnection.execSql(request);
   } catch (error) {
-    console.log("Error caught by the try catch.");
-    console.log(error);
+    console.log("ERROR: ");
+    console.log(error.message);
     if (dbConnection) {
       dbConnection.close();
     };
@@ -265,40 +227,26 @@ router.get("/username/:userId", async function (req, res, next) {
  * POST - verify a users token.
  */
 router.post("/verify", async function (req, res, next) {
-  const TAG = "users.js - post(/verify), ";
   const { body } = req;
   const { token } = body;
   let response = {};
-
-  console.log(TAG + "Verifying jwt.");
-  console.log(TAG + "body: ");
-  console.log(body);
   let decoded;
 
   try {
     // Success.
     decoded = jwt.verify(token, process.env.WEBTOKEN_SECRET);
-    console.log(TAG + "decoded token: ");
-    console.log(decoded);
-
     response = { status: "Success", resData: decoded.data };
-
-
   } catch (error) { // Failures.
-    console.log(TAG + "Error decoding token");
     if (error.name === "TokenExpiredError") {
       console.log("Expired token error.");
-      console.log(error);
+      console.log(error.message);
       response = { status: "Failure", resData: "Login session has expired. Please sign in again." };
     } else {
       console.log("Other error.");
-      console.log(error);
+      console.log(error.message);
       response = { status: "Failure", resData: "An error has occurred with your session. Please sign in again." };
     };
   };
-
-  console.log(TAG + "response: ");
-  console.dir(response);
   res.json(response);
 });
 

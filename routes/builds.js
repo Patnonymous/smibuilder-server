@@ -38,11 +38,8 @@ router.use("/like/:buildId", function (req, res, next) {
  * GET all the builds.
  */
 router.get("/", async function (req, res, next) {
-    const TAG = "\nbuilds.js - GET(/), ";
     let response = {};
     let dbConnection = null;
-
-    console.log(TAG + "Getting all the builds.");
 
     // Do database work in try catch.
     try {
@@ -56,10 +53,8 @@ router.get("/", async function (req, res, next) {
                 console.log(err.message);
                 response = { status: "Failure", resData: err.message };
                 dbConnection.close();
-                console.log("dbConnection closed.")
                 res.json(response);
             } else {
-                console.log("Get all builds success. Parsing now.");
                 let allParsedBuilds = [];
 
                 // Parse and format.
@@ -80,7 +75,6 @@ router.get("/", async function (req, res, next) {
 
                 response = { status: "Success", resData: allParsedBuilds };
                 dbConnection.close();
-                console.log("dbConnection closed.")
                 res.json(response);
             }
         });
@@ -89,13 +83,12 @@ router.get("/", async function (req, res, next) {
         dbConnection.execSql(request);
     } catch (error) {
         console.log("Error caught by try catch.");
-        console.log(error);
+        console.log(error.message);
         response = { status: "Failure", resData: error.message }
 
         // Close db connection if open.
         if (dbConnection) {
             dbConnection.close();
-            console.log("dbConnection closed.")
         };
         res.json(response);
     }
@@ -105,14 +98,9 @@ router.get("/", async function (req, res, next) {
  * GET a build according to the :buildId param.
  */
 router.get("/:buildId", async function (req, res, next) {
-    const TAG = "\nbuilds - GET(/:buildId), ";
     const buildId = parseInt(req.params.buildId);
     let response = {};
     let dbConnection = null;
-
-    console.log(TAG + "Getting build with ID: ", buildId);
-
-
 
     try {
         // Integer validation.
@@ -128,13 +116,9 @@ router.get("/:buildId", async function (req, res, next) {
                 console.log("Database request error: ");
                 console.log(err);
                 dbConnection.close();
-                console.log("dbConnection closed.")
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
             } else {
-                console.log("Request success. Outputting rowCount and rows: ");
-                console.log(rowCount);
-                console.log(rows);
                 if (rowCount === 0) {
                     response = { status: "Failure", resData: `A build with the ID: '${buildId}' does not exist.` };
                 } else if (rowCount > 1) {
@@ -156,7 +140,6 @@ router.get("/:buildId", async function (req, res, next) {
                 }
             };
             dbConnection.close();
-            console.log("dbConnection closed.")
             // Send res.
             res.json(response);
         });
@@ -168,12 +151,10 @@ router.get("/:buildId", async function (req, res, next) {
     } catch (error) {
         console.log("ERROR: ");
         console.log(error.message);
-        console.log(error);
         response = { status: "Failure", resData: error.message };
         // Close db connection if open.
         if (dbConnection) {
             dbConnection.close();
-            console.log("dbConnection closed.")
         };
         res.json(response);
     }
@@ -184,14 +165,9 @@ router.get("/:buildId", async function (req, res, next) {
  * CREATE a build.
  */
 router.post("/create", async function (req, res, next) {
-    const TAG = "\nbuilds.js - POST(/create), ";
     const { body } = req;
     let response = {};
     let dbConnection = null;
-
-    console.log(TAG + "body: ");
-    console.log(body);
-    console.log(JSON.stringify(body.buildItems));
 
     // Do database work in try catch.
     try {
@@ -209,9 +185,6 @@ router.post("/create", async function (req, res, next) {
                 dbConnection.close();
                 res.json(response);
             } else {
-                console.log("Created new build success.");
-                console.log(rowCount);
-                console.log(rows);
                 response = { status: "Success" };
                 dbConnection.close();
                 res.json(response);
@@ -270,13 +243,11 @@ router.post("/like/:buildId", async function (req, res, next) {
                 console.log("Database request error: ");
                 console.log(err);
                 dbConnection.close();
-                console.log("dbConnection closed.")
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
             } else {
                 response = { status: "Success", resData: "The build has been liked." };
                 dbConnection.close();
-                console.log("dbConnection closed.")
                 // Send res.
                 res.json(response);
             }
@@ -288,12 +259,10 @@ router.post("/like/:buildId", async function (req, res, next) {
     } catch (error) {
         console.log("ERROR: ");
         console.log(error.message);
-        console.log(error);
         response = { status: "Failure", resData: error.message };
         // Close db connection if open.
         if (dbConnection) {
             dbConnection.close();
-            console.log("dbConnection closed.")
         };
         res.json(response);
     }
