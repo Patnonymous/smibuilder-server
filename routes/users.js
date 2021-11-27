@@ -227,27 +227,76 @@ router.get("/username/:userId", async function (req, res, next) {
  * POST - verify a users token.
  */
 router.post("/verify", async function (req, res, next) {
+  const TAG = "users - POST(/verify), ";
   const { body } = req;
   const { token } = body;
+  let dbConnection = null;
   let response = {};
-  let decoded;
+  let decoded = null;
+
+  console.log(TAG + "Verifying.");
 
   try {
-    // Success.
+    // Decode
     decoded = jwt.verify(token, process.env.WEBTOKEN_SECRET);
-    response = { status: "Success", resData: decoded.data };
+    // Gets data.
+    const { data } = decoded;
+    const { userId, userName } = data
+    console.log(userId);
+    console.log(userName)
+    // Init connection.
+    let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+    dbConnection = dbConnectionStatus.resData;
+    let sqlSelectOneUsernameStatement = "SELECT username FROM SmiBuilder.Users WHERE id = @id";
+
+    // Check if user exists.
+    let request = new Request(sqlSelectOneUsernameStatement, function (err, rowCount, rows) {
+      if (err) {
+        console.log("Database request error: ");
+        console.log(err);
+        dbConnection.close();
+        response = { status: "Failure", resData: err.message };
+        res.json(response);
+      } else {
+        if (rowCount === 0) {
+          response = { status: "Failure", resData: `Unauthorized. User does not exist.` };
+        } else if (rowCount > 1) {
+          response = { status: "Failure", resData: "Unauthorized. Error occurred." };
+        } else if (userName !== rows[0][0].value) {
+          response = { status: "Failure", resData: "Unauthorized. Bad auth." };
+        } else {
+          response = { status: "Success", resData: data };
+        }
+
+        dbConnection.close();
+        // Send res.
+        res.json(response);
+      }
+    });
+    // Prepare.
+    request.addParameter("id", TYPES.Int, userId);
+    // Execute.
+    dbConnection.execSql(request);
+
+    //response = { status: "Success", resData: decoded.data };
   } catch (error) { // Failures.
     if (error.name === "TokenExpiredError") {
       console.log("Expired token error.");
       console.log(error.message);
       response = { status: "Failure", resData: "Login session has expired. Please sign in again." };
+      if (dbConnection) {
+        dbConnection.close();
+      };
     } else {
       console.log("Other error.");
       console.log(error.message);
       response = { status: "Failure", resData: "An error has occurred with your session. Please sign in again." };
+      if (dbConnection) {
+        dbConnection.close();
+      };
     };
+    res.json(response);
   };
-  res.json(response);
 });
 
 
