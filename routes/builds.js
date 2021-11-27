@@ -7,6 +7,29 @@ var Request = require("tedious").Request;
 const TYPES = require("tedious").TYPES;
 // Imports - Other
 const { DateTime } = require("luxon");
+var verifyUser = require("../functions/verifyUser");
+
+// Middleware
+router.use("/create", function (req, res, next) {
+    const { body } = req;
+    const { token } = body;
+    let verificationResponse = verifyUser.verifyToken(token);
+    if (verificationResponse === false) {
+        res.json({ status: "Failure", resData: "Unauthorized." })
+    } else if (verificationResponse === true) {
+        next();
+    }
+});
+router.use("/like/:buildId", function (req, res, next) {
+    const { body } = req;
+    const { token } = body;
+    let verificationResponse = verifyUser.verifyToken(token);
+    if (verificationResponse === false) {
+        res.json({ status: "Failure", resData: "Unauthorized." })
+    } else if (verificationResponse === true) {
+        next();
+    }
+});
 
 
 
@@ -17,13 +40,14 @@ const { DateTime } = require("luxon");
 router.get("/", async function (req, res, next) {
     const TAG = "\nbuilds.js - GET(/), ";
     let response = {};
+    let dbConnection = null;
 
     console.log(TAG + "Getting all the builds.");
 
     // Do database work in try catch.
     try {
         let dbConnectionStatus = await dbconfig.asyncConnectToDb();
-        let dbConnection = dbConnectionStatus.resData;
+        dbConnection = dbConnectionStatus.resData;
         let sqlSelectAllStatement = "SELECT * FROM SmiBuilder.Builds";
 
         let request = new Request(sqlSelectAllStatement, function (err, rowCount, rows) {
@@ -32,6 +56,7 @@ router.get("/", async function (req, res, next) {
                 console.log(err.message);
                 response = { status: "Failure", resData: err.message };
                 dbConnection.close();
+                console.log("dbConnection closed.")
                 res.json(response);
             } else {
                 console.log("Get all builds success. Parsing now.");
@@ -55,6 +80,7 @@ router.get("/", async function (req, res, next) {
 
                 response = { status: "Success", resData: allParsedBuilds };
                 dbConnection.close();
+                console.log("dbConnection closed.")
                 res.json(response);
             }
         });
@@ -67,12 +93,91 @@ router.get("/", async function (req, res, next) {
         response = { status: "Failure", resData: error.message }
 
         // Close db connection if open.
-        if (dbConnection !== null) {
+        if (dbConnection) {
             dbConnection.close();
+            console.log("dbConnection closed.")
         };
         res.json(response);
     }
 });
+
+/**
+ * GET a build according to the :buildId param.
+ */
+router.get("/:buildId", async function (req, res, next) {
+    const TAG = "\nbuilds - GET(/:buildId), ";
+    const buildId = parseInt(req.params.buildId);
+    let response = {};
+    let dbConnection = null;
+
+    console.log(TAG + "Getting build with ID: ", buildId);
+
+
+
+    try {
+        // Integer validation.
+        if (!Number.isInteger(buildId)) {
+            throw new Error(`The provided builId '${buildId}' is not an integer.`)
+        }
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlSelectSingleBuildStatement = "SELECT * FROM SmiBuilder.Builds WHERE id = @id";
+
+        let request = new Request(sqlSelectSingleBuildStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                console.log("dbConnection closed.")
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                console.log("Request success. Outputting rowCount and rows: ");
+                console.log(rowCount);
+                console.log(rows);
+                if (rowCount === 0) {
+                    response = { status: "Failure", resData: `A build with the ID: '${buildId}' does not exist.` };
+                } else if (rowCount > 1) {
+                    response = { status: "Failure", resData: "More than 1 build was found. Something has gone very wrong." };
+                } else {
+                    // Parse the build.
+                    let build = rows[0];
+                    let parsedBuild = {};
+                    parsedBuild.id = build[0].value;
+                    parsedBuild.ownerId = build[1].value;
+                    parsedBuild.title = build[2].value;
+                    parsedBuild.description = build[3].value;
+                    parsedBuild.godId = build[4].value;
+                    parsedBuild.items = JSON.parse(build[5].value);
+                    parsedBuild.likes = build[6].value;
+                    parsedBuild.dislikes = build[7].value;
+                    parsedBuild.createdDate = Date.parse(build[8].value);
+                    response = { status: "Success", resData: parsedBuild };
+                }
+            };
+            dbConnection.close();
+            console.log("dbConnection closed.")
+            // Send res.
+            res.json(response);
+        });
+        // Prepare.
+        request.addParameter("id", TYPES.Int, buildId);
+        // Execute.
+        dbConnection.execSql(request);
+
+    } catch (error) {
+        console.log("ERROR: ");
+        console.log(error.message);
+        console.log(error);
+        response = { status: "Failure", resData: error.message };
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+            console.log("dbConnection closed.")
+        };
+        res.json(response);
+    }
+})
 
 
 /**
@@ -82,6 +187,7 @@ router.post("/create", async function (req, res, next) {
     const TAG = "\nbuilds.js - POST(/create), ";
     const { body } = req;
     let response = {};
+    let dbConnection = null;
 
     console.log(TAG + "body: ");
     console.log(body);
@@ -90,7 +196,7 @@ router.post("/create", async function (req, res, next) {
     // Do database work in try catch.
     try {
         let dbConnectionStatus = await dbconfig.asyncConnectToDb();
-        let dbConnection = dbConnectionStatus.resData;
+        dbConnection = dbConnectionStatus.resData;
         let sqlInsertBuildStatement = "INSERT INTO SmiBuilder.Builds VALUES(@ownerId, @title, @description, @godId, @items, @likes, @dislikes, @created_on, @updated_on)";
 
         let request = new Request(sqlInsertBuildStatement, function (err, rowCount, rows) {
@@ -130,11 +236,70 @@ router.post("/create", async function (req, res, next) {
         response = { status: "Failure", resData: error.message };
 
         // Close if open.
-        if (dbConnection !== null) {
+        if (dbConnection) {
             dbConnection.close();
         }
         res.json(response);
     }
+});
+
+
+/**
+ * POST - increment the like count of a build.
+ */
+router.post("/like/:buildId", async function (req, res, next) {
+    const TAG = "\nbuilds - POST(/like/:buildId), ";
+    const buildId = parseInt(req.params.buildId);
+    let response = {};
+    let dbConnection = null;
+
+    console.log(TAG + "Liking the build with id: ");
+    console.log(buildId);
+
+    try {
+        // Integer validation.
+        if (!Number.isInteger(buildId)) {
+            throw new Error(`The provided builId '${buildId}' is not an integer.`)
+        }
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlUpdateIncrementBuildLikesStatement = "UPDATE SmiBuilder.Builds SET likes = likes + 1 WHERE id = @id";
+
+        let request = new Request(sqlUpdateIncrementBuildLikesStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                console.log("dbConnection closed.")
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                response = { status: "Success", resData: "The build has been liked." };
+                dbConnection.close();
+                console.log("dbConnection closed.")
+                // Send res.
+                res.json(response);
+            }
+        });
+        // Prepare.
+        request.addParameter("id", TYPES.Int, buildId);
+        // Execute.
+        dbConnection.execSql(request);
+    } catch (error) {
+        console.log("ERROR: ");
+        console.log(error.message);
+        console.log(error);
+        response = { status: "Failure", resData: error.message };
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+            console.log("dbConnection closed.")
+        };
+        res.json(response);
+    }
+
+
+
 });
 
 
