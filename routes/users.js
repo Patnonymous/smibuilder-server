@@ -26,6 +26,7 @@ router.post("/register", async function (req, res, next) {
   const { body } = req;
   const hashed = bcrypt.hashSync(body.password, saltRounds);
   let response = {};
+  let dbConnection = null;
   let userNameWithAppend;
 
 
@@ -36,7 +37,7 @@ router.post("/register", async function (req, res, next) {
     console.log("Awaiting connection status...");
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
     console.log("Awaited connection.");
-    let dbConnection = dbConnectionStatus.resData;
+    dbConnection = dbConnectionStatus.resData;
 
     // Get the identifier number that will be added to the end of the username
     let dbGetUsernameAppendStatus = await dbconfig.asyncGetAndSetUsernameAppend(dbConnection);
@@ -91,8 +92,10 @@ router.post("/register", async function (req, res, next) {
     console.log(TAG + "error: ");
     console.log(error)
     response = { status: "Failure", resData: error.message };
-    dbConnection.close();
-    console.log("dbConnection has been closed.");
+    if (dbConnection) {
+      dbConnection.close();
+      console.log("dbConnection has been closed.");
+    }
     res.json(response);
   };
 });
@@ -105,6 +108,7 @@ router.post("/login", async function (req, res, next) {
   const TAG = "\nusers.js - post(/login), ";
   const { body } = req;
   let response = {};
+  let dbConnection = null;
   let errorMessage = "";
 
   console.log(TAG + "body: ");
@@ -115,7 +119,7 @@ router.post("/login", async function (req, res, next) {
     console.log("Awaiting connection status...");
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
     console.log("Awaited connection.");
-    let dbConnection = dbConnectionStatus.resData;
+    dbConnection = dbConnectionStatus.resData;
     let sqlSelectUserStatement = "SELECT id, email, username, password, user_type, created_on, updated_on FROM SmiBuilder.Users WHERE email = @email";
     let request = new Request(sqlSelectUserStatement, function (err, rowCount, rows) {
       if (err) {
@@ -204,12 +208,13 @@ router.post("/login", async function (req, res, next) {
 router.get("/username/:userId", async function (req, res, next) {
   const TAG = "\nusers.js - GET (/username/:userId), ";
   let response = {};
+  let dbConnection = null;
 
   console.log(TAG + "Getting a username.");
 
   try {
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
-    let dbConnection = dbConnectionStatus.resData;
+    dbConnection = dbConnectionStatus.resData;
     let sqlSelectOneUsernameStatement = "SELECT username FROM SmiBuilder.Users WHERE id = @id";
 
     let request = new Request(sqlSelectOneUsernameStatement, function (err, rowCount, rows) {
@@ -217,6 +222,7 @@ router.get("/username/:userId", async function (req, res, next) {
         console.log("Database request error: ");
         console.log(err);
         dbConnection.close();
+        console.log("dbConnection closed.")
         response = { status: "Failure", resData: err.message };
         res.json(response);
       } else {
@@ -232,6 +238,8 @@ router.get("/username/:userId", async function (req, res, next) {
           response = { status: "Success", resData: rows[0][0].value };
         }
 
+        dbConnection.close();
+        console.log("dbConnection closed.")
         // Send res.
         res.json(response);
       };
@@ -253,6 +261,9 @@ router.get("/username/:userId", async function (req, res, next) {
 })
 
 
+/**
+ * POST - verify a users token.
+ */
 router.post("/verify", async function (req, res, next) {
   const TAG = "users.js - post(/verify), ";
   const { body } = req;
