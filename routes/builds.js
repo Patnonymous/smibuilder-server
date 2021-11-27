@@ -221,13 +221,9 @@ router.post("/create", async function (req, res, next) {
  * POST - increment the like count of a build.
  */
 router.post("/like/:buildId", async function (req, res, next) {
-    const TAG = "\nbuilds - POST(/like/:buildId), ";
     const buildId = parseInt(req.params.buildId);
     let response = {};
     let dbConnection = null;
-
-    console.log(TAG + "Liking the build with id: ");
-    console.log(buildId);
 
     try {
         // Integer validation.
@@ -266,14 +262,54 @@ router.post("/like/:buildId", async function (req, res, next) {
         };
         res.json(response);
     }
-
-
-
 });
 
+/**
+ * POST - increment the dislike count of a build.
+ */
+router.post("/dislike/:buildId", async function (req, res, next) {
+    const buildId = parseInt(req.params.buildId);
+    let response = {};
+    let dbConnection = null;
 
+    try {
+        // Integer validation.
+        if (!Number.isInteger(buildId)) {
+            throw new Error(`The provided builId '${buildId}' is not an integer.`)
+        }
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlUpdateIncrementBuildLikesStatement = "UPDATE SmiBuilder.Builds SET dislikes = dislikes + 1 WHERE id = @id";
 
-
+        let request = new Request(sqlUpdateIncrementBuildLikesStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                response = { status: "Success", resData: "The build has been disliked." };
+                dbConnection.close();
+                // Send res.
+                res.json(response);
+            }
+        });
+        // Prepare.
+        request.addParameter("id", TYPES.Int, buildId);
+        // Execute.
+        dbConnection.execSql(request);
+    } catch (error) {
+        console.log("ERROR: ");
+        console.log(error.message);
+        response = { status: "Failure", resData: error.message };
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
 
 
 module.exports = router;
