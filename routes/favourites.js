@@ -110,7 +110,63 @@ router.post("/", async function (req, res, next) {
     }
 });
 
+/**
+ * POST remove the associated record from favourites.
+ */
+router.post("/remove", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const { body } = req;
+    const { token, userId, buildId } = body;
 
+    try {
+        // Verify ints.
+        if (!Number.isInteger(userId)) {
+            throw new Error(`The provided userId '${userId}' is invalid.`);
+        };
+        if (!Number.isInteger(buildId)) {
+            throw new Error(`The provided buildId '${buildId}' is invalid`);
+        };
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlRemoveFavouriteStatement = "DELETE FROM SmiBuilder.Favourites WHERE builder_user_id = @userId AND build_id = @buildId";
+
+        let request = new Request(sqlRemoveFavouriteStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                response = { status: "Success", resData: "Favourite successfully removed." };
+                dbConnection.close();
+                res.json(response);
+            }
+        });
+        // Prepare.
+        request.addParameter("userId", TYPES.Int, userId);
+        request.addParameter("buildId", TYPES.Int, buildId);
+        // Execute.
+        dbConnection.execSql(request);
+
+    } catch (error) {
+        console.log("Error caught by try catch.");
+        console.log(error.message);
+        response = { status: "Failure", resData: error.message }
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+
+});
+
+
+/**
+ * POST checks if the build with associated ID is favourited by the associated user.
+ */
 router.post("/check", async function (req, res, next) {
     let response = {};
     let dbConnection = null;
