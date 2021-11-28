@@ -40,6 +40,16 @@ router.use("/dislike/:buildId", function (req, res, next) {
         next();
     }
 });
+router.use("/favourited", function (req, res, next) {
+    const { body } = req;
+    const { token } = body;
+    let verificationResponse = verifyUser.verifyToken(token);
+    if (verificationResponse === false) {
+        res.json({ status: "Failure", resData: "Unauthorized." })
+    } else if (verificationResponse === true) {
+        next();
+    }
+})
 
 
 
@@ -115,7 +125,7 @@ router.get("/:buildId", async function (req, res, next) {
     try {
         // Integer validation.
         if (!Number.isInteger(buildId)) {
-            throw new Error(`The provided builId '${buildId}' is not an integer.`)
+            throw new Error(`The provided builId '${buildId}' is invalid.`);
         }
         let dbConnectionStatus = await dbconfig.asyncConnectToDb();
         dbConnection = dbConnectionStatus.resData;
@@ -168,7 +178,75 @@ router.get("/:buildId", async function (req, res, next) {
         };
         res.json(response);
     }
-})
+});
+
+/**
+ * POST get all builds that are favourited by the user.
+ */
+router.post("/favourited", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const { body } = req;
+    const { token, userId } = body;
+    console.log(userId)
+
+    try {
+        // Validation.
+        if (!Number.isInteger(userId)) {
+            throw new Error(`The provided user ID '${userId}' is invalid.`);
+        }
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        // Can use a JOIN statement to get all the relevant builds.
+        let sqlSelectFavouritedBuildsStatement = "SELECT * FROM SmiBuilder.Builds AS bs JOIN SmiBuilder.Favourites AS fs ON bs.owner_id = fs.builder_user_id AND bs.id = fs.build_id WHERE owner_id = @userId";
+
+        let request = new Request(sqlSelectFavouritedBuildsStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                let allParsedBuilds = [];
+
+                // Parse and format.
+                rows.forEach(build => {
+                    let parsedBuild = {};
+                    parsedBuild.id = build[0].value;
+                    parsedBuild.ownerId = build[1].value;
+                    parsedBuild.title = build[2].value;
+                    parsedBuild.description = build[3].value;
+                    parsedBuild.godId = build[4].value;
+                    parsedBuild.items = JSON.parse(build[5].value);
+                    parsedBuild.likes = build[6].value;
+                    parsedBuild.dislikes = build[7].value;
+                    parsedBuild.createdDate = Date.parse(build[8].value);
+
+                    allParsedBuilds.push(parsedBuild);
+                });
+
+                response = { status: "Success", resData: allParsedBuilds };
+                dbConnection.close();
+                res.json(response);
+            }
+        });
+
+        // Prepare.
+        request.addParameter("userId", TYPES.Int, userId);
+        // Execute.
+        dbConnection.execSql(request);
+    } catch (error) {
+        console.log("ERROR: ");
+        console.log(error.message);
+        response = { status: "Failure", resData: error.message };
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
 
 
 /**
