@@ -11,6 +11,35 @@ const saltRounds = 10;
 // Imports - Other
 const { DateTime } = require("luxon");
 var jwt = require('jsonwebtoken');
+var verifyUser = require("../functions/verifyUser");
+
+
+// Middleware.
+router.use("/change/password", async function (req, res, next) {
+  const TAG = "\nusers - MIDDLEWARE - /change/password (), ";
+  const { body } = req;
+  const { token, userId, currentPassword } = body;
+  console.log(TAG + "Running");
+  console.log("userId: ", userId);
+  console.log("currentPassword: ", currentPassword);
+  // Verify token.
+  let verificationResponse = verifyUser.verifyToken(token);
+  if (verificationResponse === false) {
+    res.json({ status: "Failure", resData: "Unauthorized." })
+  } else if (verificationResponse === true) {
+    console.log("Token verified. Checking password now.")
+    // If token is verified, verify the current password.
+    let passwordResponse = await verifyUser.verifyPassword(userId, currentPassword);
+    console.log("passwordResponse: ", passwordResponse)
+    if (passwordResponse === false) {
+      console.log("The password was bad.")
+      res.json({ status: "Failure", resData: "Could not authenticate current password." });
+    } else {
+      console.log("The password was good. Doing next().")
+      next();
+    }
+  }
+});
 
 
 /**
@@ -220,7 +249,62 @@ router.get("/username/:userId", async function (req, res, next) {
     response = { status: "Failure", resData: error.message };
     res.json(response);
   }
-})
+});
+
+
+/**
+ * POST change a users password.
+ */
+router.post("/change/password", async function (req, res, next) {
+  const TAG = "\nusers - POST(/change/password), ";
+  let response = {};
+  let dbConnection = null;
+  const { body } = req;
+  const { userId, currentPassword, newPassword } = body;
+  const hashed = bcrypt.hashSync(newPassword, saltRounds);
+
+  console.log(TAG + "incoming data: ");
+  console.log("userId: ", userId);
+  console.log("currentPassword: ", currentPassword);
+  console.log("newPassword: ", newPassword);
+
+  try {
+    let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+    dbConnection = dbConnectionStatus.resData;
+    let sqlUpdateUserPassword = "UPDATE SmiBuilder.Users SET password = @newPass WHERE id = @userId";
+
+    let request = new Request(sqlUpdateUserPassword, function (err, rowCount, rows) {
+      if (err) {
+        console.log("Database request error: ");
+        console.log(err);
+        dbConnection.close();
+        response = { status: "Failure", resData: err.message };
+        res.json(response);
+      } else {
+        response = { status: "Success", resData: "Password successfully changed." };
+        dbConnection.close();
+        res.json(response);
+      }
+    });
+
+    // Prepare.
+    request.addParameter("newPass", TYPES.VarChar, hashed);
+    request.addParameter("userId", TYPES.Int, userId);
+    // Execute.
+    dbConnection.execSql(request);
+
+  } catch (error) {
+    console.log("ERROR: ");
+    console.log(error.message)
+    response = { status: "Failure", resData: error.message };
+    if (dbConnection) {
+      dbConnection.close();
+    }
+    res.json(response);
+  }
+
+
+});
 
 
 /**
