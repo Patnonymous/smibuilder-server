@@ -9,7 +9,7 @@ const TYPES = require("tedious").TYPES;
 var verifyUser = require("../functions/verifyUser");
 
 // Middleware - Favourites is only accessible by logged in users.
-router.use("/", function (req, res, next) {
+router.use(function (req, res, next) {
     const { body } = req;
     const { token } = body;
     let verificationResponse = verifyUser.verifyToken(token);
@@ -93,6 +93,60 @@ router.post("/", async function (req, res, next) {
             }
         });
 
+        // Prepare.
+        request.addParameter("userId", TYPES.Int, userId);
+        request.addParameter("buildId", TYPES.Int, buildId);
+        // Execute.
+        dbConnection.execSql(request);
+    } catch (error) {
+        console.log("Error caught by try catch.");
+        console.log(error.message);
+        response = { status: "Failure", resData: error.message }
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
+
+
+router.post("/check", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const { body } = req;
+    const { token, userId, buildId } = body;
+
+    try {
+        // Verify Ints.
+        if (!Number.isInteger(userId)) {
+            throw new Error(`The provided userId '${userId}' is invalid.`);
+        };
+        if (!Number.isInteger(buildId)) {
+            throw new Error(`The provided buildId '${buildId}' is invalid`);
+        };
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlCountOneFavouritesStatement = "SELECT COUNT(1) FROM SmiBuilder.Favourites WHERE builder_user_id = @userId AND build_id = @buildId";
+        let request = new Request(sqlCountOneFavouritesStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                // true if already fav'd, false if not fav'd.
+                if (rows[0][0].value !== 0) {
+                    response = { status: "Success", resData: true };
+                } else {
+                    response = { status: "Success", resData: false };
+                }
+
+                dbConnection.close();
+                res.json(response)
+            }
+        });
         // Prepare.
         request.addParameter("userId", TYPES.Int, userId);
         request.addParameter("buildId", TYPES.Int, buildId);
