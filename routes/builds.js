@@ -198,7 +198,7 @@ router.post("/favourited", async function (req, res, next) {
         let dbConnectionStatus = await dbconfig.asyncConnectToDb();
         dbConnection = dbConnectionStatus.resData;
         // Can use a JOIN statement to get all the relevant builds.
-        let sqlSelectFavouritedBuildsStatement = "SELECT * FROM SmiBuilder.Builds AS bs JOIN SmiBuilder.Favourites AS fs ON bs.owner_id = fs.builder_user_id AND bs.id = fs.build_id WHERE owner_id = @userId";
+        let sqlSelectFavouritedBuildsStatement = "SELECT * FROM SmiBuilder.Builds AS bs JOIN SmiBuilder.Favourites AS fs ON bs.id = fs.build_id WHERE fs.builder_user_id = @userId";
 
         let request = new Request(sqlSelectFavouritedBuildsStatement, function (err, rowCount, rows) {
             if (err) {
