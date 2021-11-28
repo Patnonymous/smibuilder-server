@@ -164,6 +164,50 @@ router.post("/remove", async function (req, res, next) {
 });
 
 
+router.post("/remove/all", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const { body } = req;
+    const { token, userId } = body;
+
+    try {
+        // Verify int.
+        if (!Number.isInteger(userId)) {
+            throw new Error(`The provided userId '${userId}' is invalid.`);
+        };
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlDeleteAllOfThisUsersFavsStatement = "DELETE FROM SmiBuilder.Favourites WHERE builder_user_id = @userId";
+        let request = new Request(sqlDeleteAllOfThisUsersFavsStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                response = { status: "Success", resData: "All your favourites successfully removed." };
+                dbConnection.close();
+                res.json(response);
+            }
+        });
+        // Prepare.
+        request.addParameter("userId", TYPES.Int, userId);
+        // Execute.
+        dbConnection.execSql(request);
+    } catch (error) {
+        console.log("Error caught by try catch.");
+        console.log(error.message);
+        response = { status: "Failure", resData: error.message }
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
+
+
 /**
  * POST checks if the build with associated ID is favourited by the associated user.
  */
