@@ -15,6 +15,24 @@ var verifyUser = require("../functions/verifyUser");
 
 
 // Middleware.
+router.use("/purge", async function (req, res, next) {
+  const { body } = req;
+  const { token, userId, password } = body;
+  // Verify token.
+  let verificationResponse = verifyUser.verifyToken(token);
+  if (verificationResponse === false) {
+    res.json({ status: "Failure", resData: "Unauthorized." })
+  } else if (verificationResponse === true) {
+    // If token is verified, verify the current password.
+    let passwordResponse = await verifyUser.verifyPassword(userId, password);
+    if (passwordResponse === false) {
+      res.json({ status: "Failure", resData: "Could not authenticate current password." });
+    } else {
+      next();
+    }
+  }
+});
+
 router.use("/change/password", async function (req, res, next) {
   const TAG = "\nusers - MIDDLEWARE - /change/password (), ";
   const { body } = req;
@@ -304,6 +322,50 @@ router.post("/change/password", async function (req, res, next) {
   }
 
 
+});
+
+
+/**
+ * POST - purge a user. Removes the users builds and favourites.
+ * Incoming callback hell statemement running a bunch of SQL.
+ */
+router.post("/purge", async function (req, res, next) {
+  let response = {};
+  let dbConnection = null;
+  const { body } = req;
+  const { userId, password } = body;
+
+  try {
+    let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+    dbConnection = dbConnectionStatus.resData;
+    let sqlDeleteUsersFavouritesStatement = "DELETE FROM SmiBuilder.Favourites WHERE builder_user_id = @userId";
+
+    // Delete favs first.
+    let deleteFavouritesRequest = new Request(sqlDeleteUsersFavouritesStatement, function (err, rowCount, rows) {
+      if (err) {
+        console.log("Database request error: ");
+        console.log(err);
+        dbConnection.close();
+        response = { status: "Failure", resData: err.message };
+        res.json(response);
+      } else {
+
+      }
+    });
+
+    // Prepare.
+    deleteFavouritesRequest.addParameter("userId", TYPES.Int, userId);
+    // Execute.
+    dbConnection.execSql(deleteFavouritesRequest);
+  } catch (error) {
+    console.log("ERROR: ");
+    console.log(error.message)
+    response = { status: "Failure", resData: error.message };
+    if (dbConnection) {
+      dbConnection.close();
+    }
+    res.json(response);
+  }
 });
 
 
