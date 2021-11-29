@@ -102,7 +102,7 @@ router.post("/:buildId", async function (req, res, next) {
             throw new Error(`The provided build ID '${buildId}' is invalid.`);
         } else if (!Number.isInteger(userId)) {
             throw new Error(`The provided user ID '${userId}' is invalid.`);
-        } else if (commentText.length > 254) {
+        } else if (commentText.length > 254 || commentText.length < 1) {
             throw new Error("Comment Text Error.")
         };
 
@@ -133,6 +133,158 @@ router.post("/:buildId", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
 
+    } catch (error) {
+        console.log("Error caught by try catch.");
+        console.log(error.message);
+        response = { status: "Failure", resData: error.message }
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
+
+/**
+ * POST delete a comment with the associated ID.
+ */
+router.post("/delete/:commentId", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const commentId = parseInt(req.params.commentId);
+
+    try {
+        if (!Number.isInteger(commentId)) {
+            throw new Error(`The provided comment ID '${commentId}' is invalid.`);
+        }
+
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlDeleteCommentStatement = "DELETE FROM SmiBuilder.Comments WHERE id = @commentId";
+
+        let request = new Request(sqlDeleteCommentStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                dbConnection.close();
+                response = { status: "Success", resData: "Comment Successfully deleted." };
+                res.json(response);
+            }
+        });
+        // Prepare.
+        request.addParameter("commentId", TYPES.Int, commentId);
+        // Execute.
+        dbConnection.execSql(request);
+    } catch (error) {
+        console.log("Error caught by try catch.");
+        console.log(error.message);
+        response = { status: "Failure", resData: error.message }
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
+
+
+/**
+ * POST edit an existing comments text.
+ */
+router.post("/edit/:commentId", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const commentId = parseInt(req.params.commentId);
+    const { body } = req;
+    const { token, newCommentText } = body;
+
+    try {
+        if (!Number.isInteger(commentId)) {
+            throw new Error(`The provided comment ID '${commentId}' is invalid.`);
+        } else if (newCommentText.length < 1 || newCommentText.length > 254) {
+            throw new Error("Comment Text Error.")
+        }
+
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlUpdateCommentStatement = "UPDATE SmiBuilder.Comments SET comment_text = @newCommentText WHERE id = @commentId";
+
+        let request = new Request(sqlUpdateCommentStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                dbConnection.close();
+                response = { status: "Success", resData: "Comment successfully edited." };
+                res.json(response);
+            }
+        });
+        // Prepare.
+        request.addParameter("newCommentText", TYPES.VarChar, newCommentText);
+        request.addParameter("commentId", TYPES.Int, commentId);
+        // Execute.
+        dbConnection.execSql(request);
+    } catch (error) {
+        console.log("Error caught by try catch.");
+        console.log(error.message);
+        response = { status: "Failure", resData: error.message }
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+})
+
+
+/**
+ * POST rate a build up or down.
+ */
+router.post("/rate/:commentId", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const commentId = parseInt(req.params.commentId);
+    const { body } = req;
+    const { token, rateUp } = body;
+
+    try {
+        if (!Number.isInteger(commentId)) {
+            throw new Error(`The provided comment ID '${commentId}' is invalid.`);
+        }
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlUpdateRatingStatement = "";
+        if (rateUp) {
+            sqlUpdateRatingStatement = "UPDATE SmiBuilder.Comments SET rating = rating + 1 WHERE id = @commentId";
+        } else {
+            sqlUpdateRatingStatement = "UPDATE SmiBuilder.Comments SET rating = rating - 1 WHERE id = @commentId";
+        }
+
+        let request = new Request(sqlUpdateRatingStatement, function (err, rowCount, rows) {
+            if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                dbConnection.close();
+                response = { status: "Success", resData: "Comment successfully rated." };
+                res.json(response);
+            }
+        });
+
+        // Prepare.
+        request.addParameter("commentId", TYPES.Int, commentId);
+        // Execute.
+        dbConnection.execSql(request);
     } catch (error) {
         console.log("Error caught by try catch.");
         console.log(error.message);
