@@ -103,7 +103,7 @@ router.post("/register", async function (req, res, next) {
         console.log(err.message);
 
         // Bad error handling.
-        if (err.message.includes("Violation of UNIQUE KEY constraint 'SmiBuilderUsers_email_unique'")) {
+        if (err.message.includes("Violation of UNIQUE KEY constraint 'Users_email_Unique'")) {
           errorMessage = "This email is already is registered."
         } else {
           errorMessage = err.message;
@@ -386,7 +386,7 @@ router.post("/purge", async function (req, res, next) {
                     response = { status: "Failure", resData: err.message };
                     res.json(response);
                   } else {
-                    response = { status: "Success", resData: "User successfully purged." };
+                    response = { status: "Success", resData: "User successfully purged. Goodbye!" };
                     dbConnection.close();
                     res.json(response);
                   }
