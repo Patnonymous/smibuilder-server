@@ -74,9 +74,16 @@ router.post("/register", async function (req, res, next) {
   let response = {};
   let dbConnection = null;
   let userNameWithAppend;
+  const isRegistrationOpen = (process.env.REGISTRATION_OPEN === 'true');
 
 
   try {
+    // Deny if registration is not open.
+    if (isRegistrationOpen !== true) {
+      throw new Error("Registration is currently closed.");
+    };
+
+    // Continue if it registration is open.
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
     dbConnection = dbConnectionStatus.resData;
 
@@ -114,7 +121,7 @@ router.post("/register", async function (req, res, next) {
     });
 
     // This is how to add variables to prepared statements using Tedious.
-    request.addParameter("email", TYPES.VarChar, body.email);
+    request.addParameter("email", TYPES.VarChar, body.email.toLowerCase());
     request.addParameter("username", TYPES.VarChar, userNameWithAppend);
     request.addParameter("password", TYPES.VarChar, hashed);
     request.addParameter("user_type", TYPES.VarChar, "Member");
@@ -333,14 +340,14 @@ router.post("/purge", async function (req, res, next) {
   let response = {};
   let dbConnection = null;
   const { body } = req;
-  const { userId, password } = body;
+  const { userId } = body;
 
   try {
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
     dbConnection = dbConnectionStatus.resData;
     let sqlDeleteUsersFavouritesStatement = "DELETE FROM SmiBuilder.Favourites WHERE builder_user_id = @userId";
 
-    // Delete favs first.
+    // Delete this users favourites.
     let deleteFavouritesRequest = new Request(sqlDeleteUsersFavouritesStatement, function (err, rowCount, rows) {
       if (err) {
         console.log("Database request error: ");
@@ -349,7 +356,57 @@ router.post("/purge", async function (req, res, next) {
         response = { status: "Failure", resData: err.message };
         res.json(response);
       } else {
-
+        // Delete this users comments.
+        let sqlDeleteUsersCommentsStatement = "DELETE FROM SmiBuilder.Comments WHERE owner_id = @userId";
+        let deleteCommentsRequest = new Request(sqlDeleteUsersCommentsStatement, function (err, rowCount, rows) {
+          if (err) {
+            console.log("Database request error: ");
+            console.log(err);
+            dbConnection.close();
+            response = { status: "Failure", resData: err.message };
+            res.json(response);
+          } else {
+            // Delete this users builds.
+            let sqlDeleteUsersBuildsStatement = "DELETE FROM SmiBuilder.Builds WHERE owner_id = @userId";
+            let deleteBuildsRequest = new Request(sqlDeleteUsersBuildsStatement, function (err, rowCount, rows) {
+              if (err) {
+                console.log("Database request error: ");
+                console.log(err);
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+              } else {
+                // Finally, delete this users account.
+                let sqlDeleteThisUserStatement = "DELETE FROM SmiBuilder.Users WHERE id = @userId";
+                let deleteUserRequest = new Request(sqlDeleteThisUserStatement, function (err, rowCount, rows) {
+                  if (err) {
+                    console.log("Database request error: ");
+                    console.log(err);
+                    dbConnection.close();
+                    response = { status: "Failure", resData: err.message };
+                    res.json(response);
+                  } else {
+                    response = { status: "Success", resData: "User successfully purged." };
+                    dbConnection.close();
+                    res.json(response);
+                  }
+                });
+                // Prepare.
+                deleteUserRequest.addParameter("userId", TYPES.Int, userId);
+                // Execute.
+                dbConnection.execSql(deleteUserRequest);
+              }
+            });
+            // Prepare.
+            deleteBuildsRequest.addParameter("userId", TYPES.Int, userId);
+            // Execute.
+            dbConnection.execSql(deleteBuildsRequest);
+          }
+        });
+        // Prepare.
+        deleteCommentsRequest.addParameter("userId", TYPES.Int, userId);
+        // Execute.
+        dbConnection.execSql(deleteCommentsRequest);
       }
     });
 
