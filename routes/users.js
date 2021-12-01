@@ -34,26 +34,18 @@ router.use("/purge", async function (req, res, next) {
 });
 
 router.use("/change/password", async function (req, res, next) {
-  const TAG = "\nusers - MIDDLEWARE - /change/password (), ";
   const { body } = req;
   const { token, userId, currentPassword } = body;
-  console.log(TAG + "Running");
-  console.log("userId: ", userId);
-  console.log("currentPassword: ", currentPassword);
   // Verify token.
   let verificationResponse = verifyUser.verifyToken(token);
   if (verificationResponse === false) {
     res.json({ status: "Failure", resData: "Unauthorized." })
   } else if (verificationResponse === true) {
-    console.log("Token verified. Checking password now.")
     // If token is verified, verify the current password.
     let passwordResponse = await verifyUser.verifyPassword(userId, currentPassword);
-    console.log("passwordResponse: ", passwordResponse)
     if (passwordResponse === false) {
-      console.log("The password was bad.")
       res.json({ status: "Failure", resData: "Could not authenticate current password." });
     } else {
-      console.log("The password was good. Doing next().")
       next();
     }
   }
@@ -281,17 +273,11 @@ router.get("/username/:userId", async function (req, res, next) {
  * POST change a users password.
  */
 router.post("/change/password", async function (req, res, next) {
-  const TAG = "\nusers - POST(/change/password), ";
   let response = {};
   let dbConnection = null;
   const { body } = req;
   const { userId, currentPassword, newPassword } = body;
   const hashed = bcrypt.hashSync(newPassword, saltRounds);
-
-  console.log(TAG + "incoming data: ");
-  console.log("userId: ", userId);
-  console.log("currentPassword: ", currentPassword);
-  console.log("newPassword: ", newPassword);
 
   try {
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
@@ -430,14 +416,12 @@ router.post("/purge", async function (req, res, next) {
  * POST - verify a users token.
  */
 router.post("/verify", async function (req, res, next) {
-  const TAG = "users - POST(/verify), ";
   const { body } = req;
   const { token } = body;
   let dbConnection = null;
   let response = {};
   let decoded = null;
 
-  console.log(TAG + "Verifying.");
 
   try {
     // Decode
@@ -445,8 +429,6 @@ router.post("/verify", async function (req, res, next) {
     // Gets data.
     const { data } = decoded;
     const { userId, userName } = data
-    console.log(userId);
-    console.log(userName)
     // Init connection.
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
     dbConnection = dbConnectionStatus.resData;
