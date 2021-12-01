@@ -22,9 +22,12 @@ var itemsRouter = require("./routes/items");
 var buildsRouter = require("./routes/builds");
 var favouritesRouter = require("./routes/favourites");
 var commentsRouter = require("./routes/comments");
-var pwTestingRouter = require('./routes/pw-testing');
+var statsRouter = require("./routes/stats");
 
 var app = express();
+
+
+
 
 
 // view engine setup
@@ -38,15 +41,19 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+
+
 // Init rout links here.
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
-app.use('/pw-testing', pwTestingRouter);
 app.use('/gods', godsRouter);
 app.use("/items", itemsRouter);
 app.use("/builds", buildsRouter);
 app.use("/favourites", favouritesRouter);
 app.use("/comments", commentsRouter);
+app.use("/stats", statsRouter);
+
+
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
