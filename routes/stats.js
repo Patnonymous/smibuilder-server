@@ -90,7 +90,14 @@ router.post("/", function (req, res, next) {
             };
             // Increment hits.
             loggerJsonData.userStats[userId].numberOfHits = loggerJsonData.userStats[userId].numberOfHits + 1;
-        }
+        };
+
+
+        // Update the route paths stats.
+        if (!loggerJsonData.routeStats.hasOwnProperty(routeData.path)) {
+            loggerJsonData.routeStats[routeData.path] = { numberOfHits: 0 };
+        };
+        loggerJsonData.routeStats[routeData.path].numberOfHits = loggerJsonData.routeStats[routeData.path].numberOfHits + 1;
 
 
 
