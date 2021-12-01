@@ -69,7 +69,54 @@ async function verifyPassword(userId, passwordAttempt) {
             reject(false);
         }
     });
-}
+};
+
+async function verifyUserType(userId, typeToCheckFor) {
+    const TAG = "\nverifyUser - verifyUserType(), ";
+    let dbConnection = null;
+    let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+
+    console.log(TAG + "Checking this user.");
+    console.log("Will check userId: ", userId);
+    console.log("Will check if they are type: ", typeToCheckFor);
+
+    return new Promise((resolve, reject) => {
+        try {
+            dbConnection = dbConnectionStatus.resData;
+            let sqlSelectUserTypeStatement = "SELECT user_type FROM SmiBuilder.Users WHERE id = @userId";
+
+            let request = new Request(sqlSelectUserTypeStatement, function (err, rowCount, rows) {
+                if (err) {
+                    console.log("Request gave an err: ");
+                    console.log(err.message);
+                    dbConnection.close();
+                    reject(false);
+                } else {
+                    let usersType = rows[0][0].value;
+                    dbConnection.close();
+                    if (usersType === typeToCheckFor) {
+                        resolve(true);
+                    } else {
+                        resolve(false);
+                    }
+                }
+            });
+            // Prepare.
+            request.addParameter("userId", TYPES.Int, userId);
+            // Exec.
+            dbConnection.execSql(request);
+        } catch (error) {
+            console.log("Error caught: ");
+            console.log(error.message);
+            // Close db connection if open.
+            if (dbConnection) {
+                dbConnection.close();
+            };
+            reject(false);
+        }
+    });
+
+};
 
 
-module.exports = { verifyToken, verifyPassword }
+module.exports = { verifyToken, verifyPassword, verifyUserType }
