@@ -55,21 +55,59 @@ router.use("/favourited", function (req, res, next) {
 
 
 
-
 /**
- * GET all the builds.
+ * GET paginated builds with a search string.
  */
-router.get("/", async function (req, res, next) {
+router.get("/:pageNumber/:sortType/:isAscending/:searchString", async function (req, res, next) {
     let response = {};
     let dbConnection = null;
+    const pageNumber = parseInt(req.params.pageNumber);
+    const sortType = req.params.sortType;
+    const isAscending = req.params.isAscending === 'true' ? true : false;
+    const searchString = req.params.searchString;
 
-    // Do database work in try catch.
     try {
-        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
-        dbConnection = dbConnectionStatus.resData;
-        let sqlSelectAllStatement = "SELECT * FROM SmiBuilder.Builds";
+        // Verify variables.
+        if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+            throw new Error(`The provided page number ${pageNumber} is not valid.`);
+        }
+        if (sortType !== "Date Added" && sortType !== "Build Title" && sortType !== "Likes" && sortType !== "Dislikes") {
+            throw new Error(`The provided sort type ${sortType} is not valid.`);
+        }
+        if (isAscending !== true && isAscending !== false) {
+            throw new Error(`The provided ascending type ${isAscending} is not valid.`);
+        }
+        if (searchString.length > 255) {
+            throw new Error(`The provided search string is too large. Search string length must be < 255.`);
+        }
 
-        let request = new Request(sqlSelectAllStatement, async function (err, rowCount, rows) {
+        // Start work.
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        let orderBy = null;
+        let sqlSelectBuildsStatement = "";
+        dbConnection = dbConnectionStatus.resData;
+
+        // Choose sort type.
+        if (sortType === "Date Added") {
+            orderBy = "created_on";
+        } else if (sortType === "Build Title") {
+            orderBy = "build_title";
+        } else if (sortType === "Likes") {
+            orderBy = "likes";
+        } else if (sortType === "Dislikes") {
+            orderBy = "dislikes"
+        } else {
+            orderBy = "id";
+        };
+
+        // Create the statement. One for DESC and one for ascending.
+        if (isAscending) {
+            sqlSelectBuildsStatement = `SELECT * FROM SmiBuilder.Builds WHERE build_title LIKE @titleSearch ORDER BY ${orderBy} OFFSET (${pageNumber}-1)*5 ROWS FETCH NEXT 5 ROWS ONLY`;
+        } else {
+            sqlSelectBuildsStatement = `SELECT * FROM SmiBuilder.Builds WHERE build_title LIKE @titleSearch ORDER BY ${orderBy} DESC OFFSET (${pageNumber}-1)*5 ROWS FETCH NEXT 5 ROWS ONLY`;
+        };
+
+        let request = new Request(sqlSelectBuildsStatement, async function (err, rowCount, rows) {
             if (err) {
                 response = { status: "Failure", resData: err.message };
                 dbConnection.close();
@@ -118,18 +156,224 @@ router.get("/", async function (req, res, next) {
                     index++;
                 }
 
+                response = { status: "Success", resData: allParsedBuilds };
+                dbConnection.close();
+                res.json(response);
+            }
+        });
+        // Prepare.
+        let formmattedSearchString = `%${searchString}%`;
+        request.addParameter("titleSearch", TYPES.Text, formmattedSearchString);
+        //Execute.
+        dbConnection.execSql(request);
+
+    } catch (error) {
+        response = { status: "Failure", resData: error.message }
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
+
+/**
+ * GET paginated builds with no search string.
+ */
+router.get("/:pageNumber/:sortType/:isAscending", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const pageNumber = parseInt(req.params.pageNumber);
+    const sortType = req.params.sortType;
+    const isAscending = req.params.isAscending === 'true' ? true : false;
+
+    try {
+        // Verify variables.
+        if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+            throw new Error(`The provided page number ${pageNumber} is not valid.`);
+        }
+        if (sortType !== "Date Added" && sortType !== "Build Title" && sortType !== "Likes" && sortType !== "Dislikes") {
+            throw new Error(`The provided sort type ${sortType} is not valid.`);
+        }
+        if (isAscending !== true && isAscending !== false) {
+            throw new Error(`The provided ascending type ${isAscending} is not valid.`);
+        }
+
+        // Start work.
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        let orderBy = null;
+        let sqlSelectBuildsStatement = "";
+        dbConnection = dbConnectionStatus.resData;
+
+        // Choose sort type.
+        if (sortType === "Date Added") {
+            orderBy = "created_on";
+        } else if (sortType === "Build Title") {
+            orderBy = "build_title";
+        } else if (sortType === "Likes") {
+            orderBy = "likes";
+        } else if (sortType === "Dislikes") {
+            orderBy = "dislikes"
+        } else {
+            orderBy = "id";
+        };
+
+        // Create the statement. One for DESC and one for ascending.
+        if (isAscending) {
+            sqlSelectBuildsStatement = `SELECT * FROM SmiBuilder.Builds ORDER BY ${orderBy} OFFSET (${pageNumber}-1)*5 ROWS FETCH NEXT 5 ROWS ONLY`;
+        } else {
+            sqlSelectBuildsStatement = `SELECT * FROM SmiBuilder.Builds ORDER BY ${orderBy} DESC OFFSET (${pageNumber}-1)*5 ROWS FETCH NEXT 5 ROWS ONLY`;
+        };
+
+        let request = new Request(sqlSelectBuildsStatement, async function (err, rowCount, rows) {
+            if (err) {
+                response = { status: "Failure", resData: err.message };
+                dbConnection.close();
+                res.json(response);
+            } else {
+                let allParsedBuilds = [];
+
+                // Parse and format.
+                let index = 0;
+                let aLength = rows.length;
+                while (index < aLength) {
+                    let build = rows[index];
+                    let parsedBuild = {};
+                    // Basic data from the rows.
+                    parsedBuild.id = build[0].value;
+                    parsedBuild.ownerId = build[1].value;
+                    parsedBuild.title = build[2].value;
+                    parsedBuild.description = build[3].value;
+                    parsedBuild.godId = build[4].value;
+                    parsedBuild.items = JSON.parse(build[5].value);
+                    parsedBuild.likes = build[6].value;
+                    parsedBuild.dislikes = build[7].value;
+                    parsedBuild.createdDate = Date.parse(build[8].value);
+
+                    // Get the build owner username.
+                    let ownerName = await helperFunctions.getUsername(parsedBuild.ownerId);
+                    parsedBuild.ownerName = ownerName;
+
+                    // Get the god data.
+                    let godData = await helperFunctions.getGodData(parsedBuild.godId);
+                    parsedBuild.godData = godData;
+
+                    // Get the item data.
+                    for (const itemType in parsedBuild.items) {
+                        for (const itemSlot in parsedBuild.items[itemType]) {
+                            // Item slots can be null, so ignore any that aren't set.
+                            if (parsedBuild.items[itemType][itemSlot]) {
+                                let itemData = await helperFunctions.getItemData(parsedBuild.items[itemType][itemSlot]);
+                                // Replace the items ID with the actual item data.
+                                parsedBuild.items[itemType][itemSlot] = itemData;
+                            }
+                        }
+                    }
+
+                    allParsedBuilds.push(parsedBuild);
+                    index++;
+                }
 
                 response = { status: "Success", resData: allParsedBuilds };
                 dbConnection.close();
                 res.json(response);
             }
         });
+        //Execute.
+        dbConnection.execSql(request);
 
+    } catch (error) {
+        response = { status: "Failure", resData: error.message }
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
+
+
+/**
+ * GET pagination info for the builds.
+ * Counts builds, divided by 5 and uses ceil to round up.
+ */
+router.get("/pagination-info/", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+
+
+    try {
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlSelectCountBuildsStatement = "SELECT COUNT('id') FROM SmiBuilder.Builds";
+
+        let request = new Request(sqlSelectCountBuildsStatement, function (err, rowCount, rows) {
+            if (err) {
+                response = { status: "Failure", resData: err.message };
+                dbConnection.close();
+                res.json(response);
+            } else {
+                const recordCount = rows[0][0].value;
+                let numberOfPages = recordCount / 5;
+                numberOfPages = Math.ceil(numberOfPages);
+
+                response = { status: "Success", resData: numberOfPages };
+                res.json(response);
+            }
+        });
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
         response = { status: "Failure", resData: error.message }
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
 
+/**
+ * GET pagination info for the builds.
+ * Counts builds, divided by 5 and uses ceil to round up.
+ * Limits results to the search string.
+ */
+router.get("/pagination-info/:searchString", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const searchString = req.params.searchString;
+
+
+    try {
+        // Verify.
+        if (searchString.length > 255) {
+            throw new Error(`The provided search string is too large. Search string length must be < 255.`);
+        }
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlSelectCountBuildsStatement = "SELECT COUNT('id') FROM SmiBuilder.Builds WHERE build_title LIKE @titleSearch";
+
+        let request = new Request(sqlSelectCountBuildsStatement, function (err, rowCount, rows) {
+            if (err) {
+                response = { status: "Failure", resData: err.message };
+                dbConnection.close();
+                res.json(response);
+            } else {
+                const recordCount = rows[0][0].value;
+                let numberOfPages = recordCount / 5;
+                numberOfPages = Math.ceil(numberOfPages);
+
+                response = { status: "Success", resData: numberOfPages };
+                res.json(response);
+            }
+        });
+        // Prepare.
+        let formmattedSearchString = `%${searchString}%`;
+        request.addParameter("titleSearch", TYPES.Text, formmattedSearchString);
+        // Execute.
+        dbConnection.execSql(request);
+    } catch (error) {
+        response = { status: "Failure", resData: error.message }
         // Close db connection if open.
         if (dbConnection) {
             dbConnection.close();
