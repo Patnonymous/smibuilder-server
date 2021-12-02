@@ -155,7 +155,7 @@ router.get("/:buildId", async function (req, res, next) {
         dbConnection = dbConnectionStatus.resData;
         let sqlSelectSingleBuildStatement = "SELECT * FROM SmiBuilder.Builds WHERE id = @id";
 
-        let request = new Request(sqlSelectSingleBuildStatement, function (err, rowCount, rows) {
+        let request = new Request(sqlSelectSingleBuildStatement, async function (err, rowCount, rows) {
             if (err) {
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
@@ -169,6 +169,8 @@ router.get("/:buildId", async function (req, res, next) {
                     // Parse the build.
                     let build = rows[0];
                     let parsedBuild = {};
+
+                    // Basic data from row.
                     parsedBuild.id = build[0].value;
                     parsedBuild.ownerId = build[1].value;
                     parsedBuild.title = build[2].value;
@@ -178,6 +180,31 @@ router.get("/:buildId", async function (req, res, next) {
                     parsedBuild.likes = build[6].value;
                     parsedBuild.dislikes = build[7].value;
                     parsedBuild.createdDate = Date.parse(build[8].value);
+
+
+
+                    // Get the build owner username.
+                    let ownerName = await helperFunctions.getUsername(parsedBuild.ownerId);
+                    parsedBuild.ownerName = ownerName;
+
+                    // Get the god data.
+                    let godData = await helperFunctions.getGodData(parsedBuild.godId);
+                    parsedBuild.godData = godData;
+
+
+                    // Get the item data.
+                    for (const itemType in parsedBuild.items) {
+                        for (const itemSlot in parsedBuild.items[itemType]) {
+                            // Item slots can be null, so ignore any that aren't set.
+                            if (parsedBuild.items[itemType][itemSlot]) {
+                                let itemData = await helperFunctions.getItemData(parsedBuild.items[itemType][itemSlot]);
+                                // Replace the items ID with the actual item data.
+                                parsedBuild.items[itemType][itemSlot] = itemData;
+                            }
+                        }
+                    }
+
+                    // Finished, create response.
                     response = { status: "Success", resData: parsedBuild };
                 }
             };
