@@ -25,16 +25,10 @@ router.use(function (req, res, next) {
  * POST Favourite a Build.
  */
 router.post("/", async function (req, res, next) {
-    const TAG = "\nfavourites - POST(/), ";
     let response = {};
     let dbConnection = null;
     const { body } = req;
-    const { token, userId, buildId } = body;
-
-    console.log(TAG + "Favouriting.");
-    console.log("userId: ", userId);
-    console.log("buildId: ", buildId);
-
+    const { userId, buildId } = body;
 
     try {
         // Verify ints.
@@ -52,23 +46,15 @@ router.post("/", async function (req, res, next) {
 
         let request = new Request(sqlCountOneFavouritesStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
             } else {
-                console.log("rows[0][0]: ");
-                console.log(rows[0][0].value);
-
                 // If the value is not 0, then this build is already favourited.
                 if (rows[0][0].value === 0) {
-                    console.log("The rows value is zero. Inserting record now.")
                     let sqlInsertFavouriteStatement = "INSERT INTO SmiBuilder.Favourites VALUES(@userId, @buildId)";
                     let favRequest = new Request(sqlInsertFavouriteStatement, function (err, rowCount, rows) {
                         if (err) {
-                            console.log("Database request error: ");
-                            console.log(err);
                             dbConnection.close();
                             response = { status: "Failure", resData: err.message };
                             dbConnection.close();
@@ -85,7 +71,6 @@ router.post("/", async function (req, res, next) {
                     // Execute insert.
                     dbConnection.execSql(favRequest);
                 } else {
-                    console.log("Rows value is not 0. Favourite exists. Responding with failure and closing db.")
                     response = { status: "Failure", resData: "This build is already in your favourites." };
                     dbConnection.close();
                     res.json(response);
@@ -99,8 +84,6 @@ router.post("/", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("Error caught by try catch.");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message }
         // Close db connection if open.
         if (dbConnection) {
@@ -133,8 +116,6 @@ router.post("/remove", async function (req, res, next) {
 
         let request = new Request(sqlRemoveFavouriteStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -151,8 +132,6 @@ router.post("/remove", async function (req, res, next) {
         dbConnection.execSql(request);
 
     } catch (error) {
-        console.log("Error caught by try catch.");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message }
         // Close db connection if open.
         if (dbConnection) {
@@ -180,8 +159,6 @@ router.post("/remove/all", async function (req, res, next) {
         let sqlDeleteAllOfThisUsersFavsStatement = "DELETE FROM SmiBuilder.Favourites WHERE builder_user_id = @userId";
         let request = new Request(sqlDeleteAllOfThisUsersFavsStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -196,8 +173,6 @@ router.post("/remove/all", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("Error caught by try catch.");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message }
         // Close db connection if open.
         if (dbConnection) {
@@ -230,8 +205,6 @@ router.post("/check", async function (req, res, next) {
         let sqlCountOneFavouritesStatement = "SELECT COUNT(1) FROM SmiBuilder.Favourites WHERE builder_user_id = @userId AND build_id = @buildId";
         let request = new Request(sqlCountOneFavouritesStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -253,8 +226,6 @@ router.post("/check", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("Error caught by try catch.");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message }
         // Close db connection if open.
         if (dbConnection) {

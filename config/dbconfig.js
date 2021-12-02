@@ -9,9 +9,7 @@ const TYPES = require("tedious").TYPES;
  * @returns Promise resolved or rejected.
  */
 function asyncConnectToDb() {
-    const TAG = "\dbconfig.js - asyncConnectToDb(), ";
     let dbConnectionVar;
-    console.log(TAG + "Starting.");
     return new Promise((resolve, reject) => {
         var config = {
             server: process.env.DB_HOST,
@@ -30,23 +28,19 @@ function asyncConnectToDb() {
         dbConnectionVar = new Connection(config);
         dbConnectionVar.on("connect", function (err) {
             if (err) {
-                console.log(err);
+                reject({ conStatus: "Failure", resData: err.message });
             } else {
-                console.log("Database connection.")
                 resolve({ conStatus: "Success", resData: dbConnectionVar });
             };
         });
         dbConnectionVar.on("databaseChange", function (databaseName) {
             if (databaseName) {
-                console.log("Database changed. Name: ");
-                console.log(databaseName)
+
             } else {
-                console.log("Database change had no name.")
+
             };
         });
         dbConnectionVar.on("error", function (err) {
-            console.log("Tedious error: ");
-            console.log(err);
             dbConnectionVar.close();
             reject({ conStatus: "Failure", resData: err.message });
         });
@@ -76,8 +70,6 @@ function asyncGetAndSetUsernameAppend(dbConnectionVar) {
                 SELF.usernameAppendNumber = String(appendNumber);
                 resolve({ resStatus: "Success", resData: SELF.usernameAppendNumber });
             } catch (error) {
-                console.log("ERROR: ");
-                console.log(error.message);
                 reject({ resStatus: "Failure", resData: error.message });
             }
         });

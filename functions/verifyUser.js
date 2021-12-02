@@ -26,11 +26,7 @@ function verifyToken(token) {
 };
 
 async function verifyPassword(userId, passwordAttempt) {
-    const TAG = "\nverifyUser - verifyPassword(), ";
     let dbConnection = null;
-    console.log(TAG + "data: ");
-    console.log("userId: ", userId);
-    console.log("passwordAttempt: ", passwordAttempt);
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
     return new Promise((resolve, reject) => {
         try {
@@ -38,14 +34,11 @@ async function verifyPassword(userId, passwordAttempt) {
             let sqlSelectPasswordStatement = "SELECT password FROM SmiBuilder.Users WHERE id = @userId";
             let request = new Request(sqlSelectPasswordStatement, function (err, rowCount, rows) {
                 if (err) {
-                    console.log("Request gave an err: ");
-                    console.log(err.message);
                     dbConnection.close();
                     reject(false);
                 } else {
                     const passHash = rows[0][0].value;
                     let isPasswordCorrect = bcrypt.compareSync(passwordAttempt, passHash);
-                    console.log("isPasswordCorrect: ", isPasswordCorrect)
                     if (isPasswordCorrect === true) {
                         dbConnection.close();
                         resolve(true);
@@ -60,8 +53,6 @@ async function verifyPassword(userId, passwordAttempt) {
             // Exec.
             dbConnection.execSql(request);
         } catch (error) {
-            console.log("Error caught: ");
-            console.log(error.message);
             // Close db connection if open.
             if (dbConnection) {
                 dbConnection.close();
@@ -72,13 +63,9 @@ async function verifyPassword(userId, passwordAttempt) {
 };
 
 async function verifyUserType(userId, typeToCheckFor) {
-    const TAG = "\nverifyUser - verifyUserType(), ";
     let dbConnection = null;
     let dbConnectionStatus = await dbconfig.asyncConnectToDb();
 
-    console.log(TAG + "Checking this user.");
-    console.log("Will check userId: ", userId);
-    console.log("Will check if they are type: ", typeToCheckFor);
 
     return new Promise((resolve, reject) => {
         try {
@@ -87,8 +74,6 @@ async function verifyUserType(userId, typeToCheckFor) {
 
             let request = new Request(sqlSelectUserTypeStatement, function (err, rowCount, rows) {
                 if (err) {
-                    console.log("Request gave an err: ");
-                    console.log(err.message);
                     dbConnection.close();
                     reject(false);
                 } else {
@@ -106,8 +91,6 @@ async function verifyUserType(userId, typeToCheckFor) {
             // Exec.
             dbConnection.execSql(request);
         } catch (error) {
-            console.log("Error caught: ");
-            console.log(error.message);
             // Close db connection if open.
             if (dbConnection) {
                 dbConnection.close();

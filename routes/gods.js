@@ -14,8 +14,6 @@ router.get('/', async function (req, res, next) {
     try {
         response = { status: "Success", resData: godsArray };
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);
@@ -37,8 +35,6 @@ router.get("/:id", async function (req, res, next) {
             response = { status: "Success", resData: foundGod[0] };
         }
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
     }
 

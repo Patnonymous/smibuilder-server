@@ -22,8 +22,6 @@ router.post("/", async function (req, res, next) {
         });
         response = { status: "Success", resData: filteredItemsArray };
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);
@@ -47,8 +45,6 @@ router.get("/:itemId", async function (req, res, next) {
             throw new Error(`Could not find an item with the ID: ${req.params.itemId}`);
         }
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
     }
     res.json(response);
@@ -73,8 +69,6 @@ router.post("/consumables", async function (req, res, next) {
         });
         response = { status: "Success", resData: filteredItemsArray };
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);
@@ -98,8 +92,6 @@ router.post("/relics", async function (req, res, next) {
         });
         response = { status: "Success", resData: filteredItemsArray };
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);
@@ -211,8 +203,6 @@ router.post("/:godRole/:godDamageType/:godBasicAttackType/:itemsOnly/:isRatatosk
 
         response = { status: "Success", resData: filteredItemsArray };
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);
@@ -252,8 +242,6 @@ router.get("/tree/:rootId", async function (req, res, next) {
         response = { status: "Success", resData: resData }
 
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
     };
     res.json(response);

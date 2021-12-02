@@ -44,8 +44,6 @@ router.get("/:buildId", async function (req, res, next) {
 
         let request = new Request(sqlSelectAllCommentsStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -75,8 +73,6 @@ router.get("/:buildId", async function (req, res, next) {
         //Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("Error caught by try catch.");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message }
         // Close db connection if open.
         if (dbConnection) {
@@ -112,8 +108,6 @@ router.post("/:buildId", async function (req, res, next) {
 
         let request = new Request(sqlInsertCommentStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -134,8 +128,6 @@ router.post("/:buildId", async function (req, res, next) {
         dbConnection.execSql(request);
 
     } catch (error) {
-        console.log("Error caught by try catch.");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message }
         // Close db connection if open.
         if (dbConnection) {
@@ -164,8 +156,6 @@ router.post("/delete/:commentId", async function (req, res, next) {
 
         let request = new Request(sqlDeleteCommentStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -180,8 +170,6 @@ router.post("/delete/:commentId", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("Error caught by try catch.");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message }
         // Close db connection if open.
         if (dbConnection) {
@@ -215,8 +203,6 @@ router.post("/edit/:commentId", async function (req, res, next) {
 
         let request = new Request(sqlUpdateCommentStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -232,8 +218,6 @@ router.post("/edit/:commentId", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("Error caught by try catch.");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message }
         // Close db connection if open.
         if (dbConnection) {
@@ -269,8 +253,6 @@ router.post("/rate/:commentId", async function (req, res, next) {
 
         let request = new Request(sqlUpdateRatingStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -286,8 +268,6 @@ router.post("/rate/:commentId", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("Error caught by try catch.");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message }
         // Close db connection if open.
         if (dbConnection) {

@@ -5,8 +5,6 @@ var itemsJson = require("./items.json");
 var arrayOfItems = [];
 
 function loadItemsFromJson() {
-    const TAG = "\nloadItems.js - loadItemsFromJson(), ";
-    console.log(TAG + "Running.");
 
     let index = 0;
     let aLength = itemsJson.length;
@@ -14,7 +12,6 @@ function loadItemsFromJson() {
         this.arrayOfItems.push(itemsJson[index]);
         index++;
     };
-    console.log(`Finished loading items. Total: ${arrayOfItems.length}`);
 };
 
 function getArrayOfItems() {

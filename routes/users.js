@@ -91,8 +91,6 @@ router.post("/register", async function (req, res, next) {
       // Check for errors.
       if (err) {
         let errorMessage = "";
-        console.log("Database request error.");
-        console.log(err.message);
 
         // Bad error handling.
         if (err.message.includes("Violation of UNIQUE KEY constraint 'Users_email_Unique'")) {
@@ -124,8 +122,6 @@ router.post("/register", async function (req, res, next) {
 
 
   } catch (error) {
-    console.log("ERROR: ");
-    console.log(error.message)
     response = { status: "Failure", resData: error.message };
     if (dbConnection) {
       dbConnection.close();
@@ -152,8 +148,6 @@ router.post("/login", async function (req, res, next) {
     let request = new Request(sqlSelectUserStatement, function (err, rowCount, rows) {
       if (err) {
         errorMessage = "";
-        console.log("Database request error.");
-        console.log(err.message);
 
         response = { status: "Failure", resData: errorMessage };
         dbConnection.close();
@@ -206,8 +200,6 @@ router.post("/login", async function (req, res, next) {
     request.addParameter("email", TYPES.VarChar, body.email);
     dbConnection.execSql(request);
   } catch (error) {
-    console.log("ERROR: ")
-    console.log(error.message);
     response = { status: "Failure", resData: error.message };
 
     if (dbConnection) {
@@ -233,8 +225,6 @@ router.get("/username/:userId", async function (req, res, next) {
 
     let request = new Request(sqlSelectOneUsernameStatement, function (err, rowCount, rows) {
       if (err) {
-        console.log("Database request error: ");
-        console.log(err);
         dbConnection.close();
         response = { status: "Failure", resData: err.message };
         res.json(response);
@@ -258,8 +248,6 @@ router.get("/username/:userId", async function (req, res, next) {
     // Execute.
     dbConnection.execSql(request);
   } catch (error) {
-    console.log("ERROR: ");
-    console.log(error.message);
     if (dbConnection) {
       dbConnection.close();
     };
@@ -286,8 +274,6 @@ router.post("/change/password", async function (req, res, next) {
 
     let request = new Request(sqlUpdateUserPassword, function (err, rowCount, rows) {
       if (err) {
-        console.log("Database request error: ");
-        console.log(err);
         dbConnection.close();
         response = { status: "Failure", resData: err.message };
         res.json(response);
@@ -305,8 +291,6 @@ router.post("/change/password", async function (req, res, next) {
     dbConnection.execSql(request);
 
   } catch (error) {
-    console.log("ERROR: ");
-    console.log(error.message)
     response = { status: "Failure", resData: error.message };
     if (dbConnection) {
       dbConnection.close();
@@ -336,8 +320,6 @@ router.post("/purge", async function (req, res, next) {
     // Delete this users favourites.
     let deleteFavouritesRequest = new Request(sqlDeleteUsersFavouritesStatement, function (err, rowCount, rows) {
       if (err) {
-        console.log("Database request error: ");
-        console.log(err);
         dbConnection.close();
         response = { status: "Failure", resData: err.message };
         res.json(response);
@@ -346,8 +328,6 @@ router.post("/purge", async function (req, res, next) {
         let sqlDeleteUsersCommentsStatement = "DELETE FROM SmiBuilder.Comments WHERE owner_id = @userId";
         let deleteCommentsRequest = new Request(sqlDeleteUsersCommentsStatement, function (err, rowCount, rows) {
           if (err) {
-            console.log("Database request error: ");
-            console.log(err);
             dbConnection.close();
             response = { status: "Failure", resData: err.message };
             res.json(response);
@@ -356,8 +336,6 @@ router.post("/purge", async function (req, res, next) {
             let sqlDeleteUsersBuildsStatement = "DELETE FROM SmiBuilder.Builds WHERE owner_id = @userId";
             let deleteBuildsRequest = new Request(sqlDeleteUsersBuildsStatement, function (err, rowCount, rows) {
               if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -366,8 +344,6 @@ router.post("/purge", async function (req, res, next) {
                 let sqlDeleteThisUserStatement = "DELETE FROM SmiBuilder.Users WHERE id = @userId";
                 let deleteUserRequest = new Request(sqlDeleteThisUserStatement, function (err, rowCount, rows) {
                   if (err) {
-                    console.log("Database request error: ");
-                    console.log(err);
                     dbConnection.close();
                     response = { status: "Failure", resData: err.message };
                     res.json(response);
@@ -401,8 +377,6 @@ router.post("/purge", async function (req, res, next) {
     // Execute.
     dbConnection.execSql(deleteFavouritesRequest);
   } catch (error) {
-    console.log("ERROR: ");
-    console.log(error.message)
     response = { status: "Failure", resData: error.message };
     if (dbConnection) {
       dbConnection.close();
@@ -437,8 +411,6 @@ router.post("/verify", async function (req, res, next) {
     // Check if user exists.
     let request = new Request(sqlSelectOneUsernameStatement, function (err, rowCount, rows) {
       if (err) {
-        console.log("Database request error: ");
-        console.log(err);
         dbConnection.close();
         response = { status: "Failure", resData: err.message };
         res.json(response);
@@ -466,15 +438,11 @@ router.post("/verify", async function (req, res, next) {
     //response = { status: "Success", resData: decoded.data };
   } catch (error) { // Failures.
     if (error.name === "TokenExpiredError") {
-      console.log("Expired token error.");
-      console.log(error.message);
       response = { status: "Failure", resData: "Login session has expired. Please sign in again." };
       if (dbConnection) {
         dbConnection.close();
       };
     } else {
-      console.log("Other error.");
-      console.log(error.message);
       response = { status: "Failure", resData: "An error has occurred with your session. Please sign in again." };
       if (dbConnection) {
         dbConnection.close();

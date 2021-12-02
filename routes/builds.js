@@ -69,8 +69,6 @@ router.get("/", async function (req, res, next) {
 
         let request = new Request(sqlSelectAllStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error.");
-                console.log(err.message);
                 response = { status: "Failure", resData: err.message };
                 dbConnection.close();
                 res.json(response);
@@ -102,8 +100,6 @@ router.get("/", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("Error caught by try catch.");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message }
 
         // Close db connection if open.
@@ -133,8 +129,6 @@ router.get("/:buildId", async function (req, res, next) {
 
         let request = new Request(sqlSelectSingleBuildStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -169,8 +163,6 @@ router.get("/:buildId", async function (req, res, next) {
         dbConnection.execSql(request);
 
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
         // Close db connection if open.
         if (dbConnection) {
@@ -187,8 +179,8 @@ router.post("/favourited", async function (req, res, next) {
     let response = {};
     let dbConnection = null;
     const { body } = req;
-    const { token, userId } = body;
-    console.log(userId)
+    const { userId } = body;
+
 
     try {
         // Validation.
@@ -202,8 +194,6 @@ router.post("/favourited", async function (req, res, next) {
 
         let request = new Request(sqlSelectFavouritedBuildsStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -237,8 +227,6 @@ router.post("/favourited", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
         // Close db connection if open.
         if (dbConnection) {
@@ -266,8 +254,6 @@ router.post("/create", async function (req, res, next) {
         let request = new Request(sqlInsertBuildStatement, function (err, rowCount, rows) {
             if (err) {
                 let errorMessage = "";
-                console.log("Database request error.");
-                console.log(err.message);
                 errorMessage = err.message;
                 response = { status: "Failure", resData: errorMessage };
                 dbConnection.close();
@@ -292,8 +278,6 @@ router.post("/create", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("Error caught by the try catch.")
-        console.log(error);
         response = { status: "Failure", resData: error.message };
 
         // Close if open.
@@ -324,8 +308,6 @@ router.post("/like/:buildId", async function (req, res, next) {
 
         let request = new Request(sqlUpdateIncrementBuildLikesStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -341,8 +323,6 @@ router.post("/like/:buildId", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
         // Close db connection if open.
         if (dbConnection) {
@@ -371,8 +351,6 @@ router.post("/dislike/:buildId", async function (req, res, next) {
 
         let request = new Request(sqlUpdateIncrementBuildLikesStatement, function (err, rowCount, rows) {
             if (err) {
-                console.log("Database request error: ");
-                console.log(err);
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
                 res.json(response);
@@ -388,8 +366,6 @@ router.post("/dislike/:buildId", async function (req, res, next) {
         // Execute.
         dbConnection.execSql(request);
     } catch (error) {
-        console.log("ERROR: ");
-        console.log(error.message);
         response = { status: "Failure", resData: error.message };
         // Close db connection if open.
         if (dbConnection) {
