@@ -1,11 +1,17 @@
 // Imports - Express.
 var express = require('express');
 var router = express.Router();
+// Imports - Database
+var dbconfig = require("../config/dbconfig");
+var Request = require("tedious").Request;
+const TYPES = require("tedious").TYPES;
 // Imports - Other
 const fs = require("fs");
 var verifyUser = require("../functions/verifyUser");
+// Imports - other
+var loadItems = require("../functions/loadItems");
 
-
+// Middleware ----
 router.use("/get/site-stats", async function (req, res, next) {
     const { body } = req;
     const { token, userId } = body;
@@ -24,13 +30,35 @@ router.use("/get/site-stats", async function (req, res, next) {
         }
     }
 });
+router.use("/get/item-stats", async function (req, res, next) {
+    const { body } = req;
+    const { token, userId } = body;
 
+    // Verify token.
+    let verifyTokenResult = verifyUser.verifyToken(token);
+    if (verifyTokenResult === false) {
+        res.json({ status: "Failure", resData: "Unauthorized." });
+    } else {
+        // Verify user is the type we want.
+        let verifyUserTypeResponse = await verifyUser.verifyUserType(userId, "Admin");
+        if (verifyUserTypeResponse === false) {
+            res.json({ status: "Failure", resData: "Unauthorized." });
+        } else {
+            next();
+        }
+    }
+});
+// END Middleware ----
+
+
+/**
+ * POST / end point logs provided data to the pw logging file.
+ */
 router.post("/", function (req, res, next) {
     // Variables.
-    const TAG = "\n-------- stats.js - POST(/), --------";
-    const { body, baseUrl, originalUrl, path, hostname, ip } = req;
+    const { body, ip } = req;
     const { routeData, userData } = body;
-    const { userId, userEmail, userName, userType } = userData;
+    const { userId, userName, userType } = userData;
     let loggerJsonData = null;
 
     // Attempt to load logger file.
@@ -38,8 +66,6 @@ router.post("/", function (req, res, next) {
         let rawData = fs.readFileSync("pw-logging/pwLoggerFile.json");
         loggerJsonData = JSON.parse(rawData);
     } catch (error) {
-        console.log("Caught error when loading file");
-        console.log(error);
         // Create the log file if it doesn't exist.
         // Initialize with the current date.
         loggerJsonData = { dateLoggerInitialized: Date.now(), lastTwentyFiveRequests: [], userStats: {}, routeStats: {} };
@@ -47,29 +73,6 @@ router.post("/", function (req, res, next) {
     };
 
     try {
-        console.log("loggerJsonData: ");
-        console.log(loggerJsonData);
-
-        // The works.
-        console.log(TAG + "We loggin!");
-        console.log("Outputting server route req stats: ");
-        console.log("req.baseUrl: ", baseUrl);
-        console.log("req.originalUrl: ", originalUrl);
-        console.log("req.path: ", path);
-        console.log("req.hostname: ", hostname);
-        console.log("req.ip: ", ip);
-        console.log('Time:', Date.now());
-
-        console.log("\nOutputting body stats!");
-        console.log("routeData: ");
-        console.log(routeData);
-        console.log("\nuserData: ");
-        console.log(userData);
-
-        console.log("\n -------- LOG END --------\n");
-
-
-
         // Log the route file.
         // Remove the first item if 25.
         if (loggerJsonData.lastTwentyFiveRequests.length === 25) {
@@ -81,11 +84,8 @@ router.post("/", function (req, res, next) {
 
         // Update user stats if they're not anonymous.
         if (userId !== null) {
-            console.log("Updating pw log user stats.");
-            console.log("Checking if user is alread in stats: ");
             // If the user is not already initiated in the logs, init them.
             if (!loggerJsonData.userStats.hasOwnProperty(userId)) {
-                console.log("User not initiated.");
                 loggerJsonData.userStats[userId] = { userName: userName, numberOfHits: 0 };
             };
             // Increment hits.
@@ -100,23 +100,18 @@ router.post("/", function (req, res, next) {
         loggerJsonData.routeStats[routeData.path].numberOfHits = loggerJsonData.routeStats[routeData.path].numberOfHits + 1;
 
 
-
-
-
         // Write.
         fs.writeFileSync("pw-logging/pwLoggerFile.json", JSON.stringify(loggerJsonData));
 
         res.send("I got you!");
     } catch (error) {
-        console.log("Caught error processing pw log: ");
-        console.log(error);
         res.send("I dont got you. There was an error.");
     }
 });
 
 
 /**
- * POST get the site stats.
+ * POST get the latest site statistics.
  */
 router.post("/get/site-stats", function (req, res, next) {
     // Try to get the stats log file.
@@ -125,9 +120,73 @@ router.post("/get/site-stats", function (req, res, next) {
         let loggerJsonData = JSON.parse(rawData);
         res.json({ status: "Success", resData: loggerJsonData });
     } catch (error) {
-        console.log("Caught error when trying to get stats log file: ");
-        console.log(error);
         res.json({ status: "Failure", resData: error.message });
+    }
+});
+
+
+/**
+ * POST get the latest info on what items are being used.
+ */
+router.post("/get/item-stats", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const itemsArray = loadItems.getArrayOfItems();
+
+    try {
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlSelectAllBuildsItemsStatement = "SELECT item_ids_json FROM SmiBuilder.Builds";
+
+        let request = new Request(sqlSelectAllBuildsItemsStatement, function (err, rowCount, rows) {
+            if (err) {
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                dbConnection.close();
+
+                // Do work and process the items.
+                let itemUsageStats = {}
+                rows.forEach(build => {
+                    let buildData = JSON.parse(build[0].value);
+
+                    // Check item categories for non-null item slots.
+                    for (const itemCategory in buildData) {
+                        for (const itemSlot in buildData[itemCategory]) {
+                            if (buildData[itemCategory][itemSlot] !== null) {
+                                let itemId = buildData[itemCategory][itemSlot];
+                                // Check if the item already exists in the itemUsageStats. If not - initialize it.
+                                if (!itemUsageStats.hasOwnProperty(itemId)) {
+                                    itemUsageStats[itemId] = { numberOfHits: 0 };
+                                    // Get the data for this item.
+                                    let itemIndex = itemsArray.findIndex(item => {
+                                        return item.ItemId === itemId
+                                    });
+                                    itemUsageStats[itemId].itemData = itemsArray[itemIndex];
+                                };
+                                // Increment items hits.
+                                itemUsageStats[itemId].numberOfHits = itemUsageStats[itemId].numberOfHits + 1;
+                            }
+                        }
+                    }
+                });
+
+
+
+
+                response = { status: "Success", resData: itemUsageStats };
+                res.json(response);
+            }
+        });
+        // Execute.
+        dbConnection.execSql(request);
+    } catch (error) {
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        response = { status: "Failure", resData: error.message };
+        res.json(response);
     }
 });
 
