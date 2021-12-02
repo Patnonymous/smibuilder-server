@@ -25,24 +25,62 @@ router.post("*", function (req, res, next) {
 
 
 /**
- * GET all comments on the associated buildId.
+ * GET paginated comments for the build with the associated ID.
+ * Gets 10 comments per page.
  */
-router.get("/:buildId", async function (req, res, next) {
+router.get("/:buildId/:pageNumber/:sortType/:isAscending", async function (req, res, next) {
     let response = {};
     let dbConnection = null;
     const buildId = parseInt(req.params.buildId);
+    const pageNumber = parseInt(req.params.pageNumber);
+    const sortType = req.params.sortType;
+    const isAscending = req.params.isAscending === 'true' ? true : false;
+
+    console.log("\nGetting paginated comments.");
+    console.log("buildId: ", buildId);
+    console.log("pageNumber: ", pageNumber);
+    console.log("sortType: ", sortType);
+    console.log("isAscending: ", isAscending);
 
     try {
-        // Verify int.
+        // Verify the integers.
         if (!Number.isInteger(buildId)) {
-            throw new Error(`The provided userId '${buildId}' is invalid.`);
-        };
+            throw new Error(`The provided build ID ${buildId} is not valid.`);
+        }
+        if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+            throw new Error(`The provided page number ${pageNumber} is not valid.`);
+        }
+        // Verify the others.
+        if (sortType !== "Date" && sortType !== "Rating") {
+            throw new Error(`The provided sort type ${sortType} is not valid.`);
+        }
+        if (isAscending !== true && isAscending !== false) {
+            throw new Error(`The provided ascending variable ${isAscending} is not valid.`)
+        }
 
+        // Start work.
         let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        let orderBy = null;
+        let sqlSelectCommentsStatement = "";
         dbConnection = dbConnectionStatus.resData;
-        let sqlSelectAllCommentsStatement = "SELECT cs.id, cs.build_id, cs.owner_id, cs.comment_text, cs.rating, cs.created_on, us.username FROM SmiBuilder.Comments AS cs JOIN SmiBuilder.Users AS us ON cs.owner_id = us.id WHERE build_id = @buildId";
 
-        let request = new Request(sqlSelectAllCommentsStatement, function (err, rowCount, rows) {
+        // We want a pagination statement, it'll be pretty big.
+        if (sortType === "Date") {
+            orderBy = "created_on";
+        } else if (sortType === "Rating") {
+            orderBy = "rating";
+        } else {
+            orderBy = "id"
+        }
+
+        // Create the statement.
+        if (isAscending) {
+            sqlSelectCommentsStatement = `SELECT cs.id, cs.build_id, cs.owner_id, cs.comment_text, cs.rating, cs.created_on, us.username FROM SmiBuilder.Comments AS cs JOIN SmiBuilder.Users AS us ON cs.owner_id = us.id WHERE build_id = @buildId ORDER BY ${orderBy} OFFSET (${pageNumber}-1)*10 ROWS FETCH NEXT 10 ROWS ONLY`;
+        } else {
+            sqlSelectCommentsStatement = `SELECT cs.id, cs.build_id, cs.owner_id, cs.comment_text, cs.rating, cs.created_on, us.username FROM SmiBuilder.Comments AS cs JOIN SmiBuilder.Users AS us ON cs.owner_id = us.id WHERE build_id = @buildId ORDER BY ${orderBy} DESC OFFSET (${pageNumber}-1)*10 ROWS FETCH NEXT 10 ROWS ONLY`;
+        }
+
+        let request = new Request(sqlSelectCommentsStatement, function (err, rowCount, rows) {
             if (err) {
                 dbConnection.close();
                 response = { status: "Failure", resData: err.message };
@@ -67,7 +105,56 @@ router.get("/:buildId", async function (req, res, next) {
                 res.json(response);
             }
         });
+        // Prepare.
+        request.addParameter("buildId", TYPES.Int, buildId);
+        //Execute.
+        dbConnection.execSql(request);
 
+    } catch (error) {
+        response = { status: "Failure", resData: error.message }
+        // Close db connection if open.
+        if (dbConnection) {
+            dbConnection.close();
+        };
+        res.json(response);
+    }
+});
+
+
+/**
+ * GET pagination info for this build.
+ * Calculates the total number of comments pages that are appropriate for this build.
+ */
+router.get("/pagination-info/:buildId", async function (req, res, next) {
+    let response = {};
+    let dbConnection = null;
+    const buildId = parseInt(req.params.buildId);
+
+    try {
+        if (!Number.isInteger(buildId)) {
+            throw new Error(`The provided build ID ${buildId} is invalid.`);
+        }
+        let dbConnectionStatus = await dbconfig.asyncConnectToDb();
+        dbConnection = dbConnectionStatus.resData;
+        let sqlSelectCountCommentsStatement = "SELECT COUNT('id') FROM SmiBuilder.Comments WHERE build_id = @buildId";
+
+        let request = new Request(sqlSelectCountCommentsStatement, function (err, rowCount, rows) {
+            if (err) {
+                dbConnection.close();
+                response = { status: "Failure", resData: err.message };
+                res.json(response);
+            } else {
+                const recordCount = rows[0][0].value;
+                console.log(recordCount);
+                let numberOfPages = recordCount / 10;
+                console.log("numberOfPages: ", numberOfPages);
+                numberOfPages = Math.ceil(numberOfPages);
+                console.log("numberOfPages with ceil applied: ", numberOfPages);
+
+                response = { status: "Success", resData: numberOfPages };
+                res.json(response);
+            }
+        });
         // Prepare.
         request.addParameter("buildId", TYPES.Int, buildId);
         //Execute.
