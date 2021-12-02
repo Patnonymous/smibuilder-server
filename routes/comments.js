@@ -36,11 +36,6 @@ router.get("/:buildId/:pageNumber/:sortType/:isAscending", async function (req, 
     const sortType = req.params.sortType;
     const isAscending = req.params.isAscending === 'true' ? true : false;
 
-    console.log("\nGetting paginated comments.");
-    console.log("buildId: ", buildId);
-    console.log("pageNumber: ", pageNumber);
-    console.log("sortType: ", sortType);
-    console.log("isAscending: ", isAscending);
 
     try {
         // Verify the integers.
@@ -145,11 +140,8 @@ router.get("/pagination-info/:buildId", async function (req, res, next) {
                 res.json(response);
             } else {
                 const recordCount = rows[0][0].value;
-                console.log(recordCount);
                 let numberOfPages = recordCount / 10;
-                console.log("numberOfPages: ", numberOfPages);
                 numberOfPages = Math.ceil(numberOfPages);
-                console.log("numberOfPages with ceil applied: ", numberOfPages);
 
                 response = { status: "Success", resData: numberOfPages };
                 res.json(response);
