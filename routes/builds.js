@@ -8,6 +8,8 @@ const TYPES = require("tedious").TYPES;
 // Imports - Other
 const { DateTime } = require("luxon");
 var verifyUser = require("../functions/verifyUser");
+var helperFunctions = require("../functions/helperFunctions");
+var loadItems = require("../functions/loadItems");
 
 // Middleware
 router.use("/create", function (req, res, next) {
@@ -67,7 +69,7 @@ router.get("/", async function (req, res, next) {
         dbConnection = dbConnectionStatus.resData;
         let sqlSelectAllStatement = "SELECT * FROM SmiBuilder.Builds";
 
-        let request = new Request(sqlSelectAllStatement, function (err, rowCount, rows) {
+        let request = new Request(sqlSelectAllStatement, async function (err, rowCount, rows) {
             if (err) {
                 response = { status: "Failure", resData: err.message };
                 dbConnection.close();
@@ -76,8 +78,12 @@ router.get("/", async function (req, res, next) {
                 let allParsedBuilds = [];
 
                 // Parse and format.
-                rows.forEach(build => {
+                let index = 0;
+                let aLength = rows.length;
+                while (index < aLength) {
+                    let build = rows[index];
                     let parsedBuild = {};
+                    // Basic data from the rows.
                     parsedBuild.id = build[0].value;
                     parsedBuild.ownerId = build[1].value;
                     parsedBuild.title = build[2].value;
@@ -88,8 +94,30 @@ router.get("/", async function (req, res, next) {
                     parsedBuild.dislikes = build[7].value;
                     parsedBuild.createdDate = Date.parse(build[8].value);
 
+                    // Get the build owner username.
+                    let ownerName = await helperFunctions.getUsername(parsedBuild.ownerId);
+                    parsedBuild.ownerName = ownerName;
+
+                    // Get the god data.
+                    let godData = await helperFunctions.getGodData(parsedBuild.godId);
+                    parsedBuild.godData = godData;
+
+                    // Get the item data.
+                    for (const itemType in parsedBuild.items) {
+                        for (const itemSlot in parsedBuild.items[itemType]) {
+                            // Item slots can be null, so ignore any that aren't set.
+                            if (parsedBuild.items[itemType][itemSlot]) {
+                                let itemData = await helperFunctions.getItemData(parsedBuild.items[itemType][itemSlot]);
+                                // Replace the items ID with the actual item data.
+                                parsedBuild.items[itemType][itemSlot] = itemData;
+                            }
+                        }
+                    }
+
                     allParsedBuilds.push(parsedBuild);
-                });
+                    index++;
+                }
+
 
                 response = { status: "Success", resData: allParsedBuilds };
                 dbConnection.close();
